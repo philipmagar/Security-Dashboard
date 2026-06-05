@@ -2,7 +2,7 @@
 
 A robust, scalable Node.js backend built to support the Security Dashboard (Mini-SIEM) application. This API handles log aggregation, real-time alert processing, and secure user management.
 
-## 🚀 Technologies Used
+## Technologies Used
 
 - **Runtime Environment:** Node.js
 - **Web Framework:** Express.js
@@ -11,14 +11,14 @@ A robust, scalable Node.js backend built to support the Security Dashboard (Mini
 - **Authentication:** JSON Web Tokens (JWT) & bcrypt for secure password hashing
 - **Development Tooling:** Nodemon, dotenv, cors
 
-## 🏗️ Architecture & Features
+## Architecture & Features
 
 - **Secure User Management:** Role-based access control with hashed passwords and secure JWT authentication.
 - **Log Ingestion:** Highly efficient data models for aggregating security logs across multiple sources.
 - **Alerting System:** Built-in alert status tracking and severity management for incident response.
 - **Containerized Database:** Simple and reproducible local development environment utilizing Docker Compose.
 
-## 🛠️ Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -75,14 +75,14 @@ npm run dev
 
 The server will be available at `http://localhost:5001`. A basic health-check endpoint is exposed at `/api/health`.
 
-## 🗄️ Database Schema Overview
+## Database Schema Overview
 
 The database relies on three core entities:
 - **User**: Represents dashboard administrators and operators (`email`, `password`, `role`).
 - **Log**: Records incoming system logs and metadata (`source`, `level`, `message`).
 - **Alert**: Tracks active incidents and anomalies (`title`, `severity`, `status`).
 
-## 🛡️ Security Measures
+## Security Measures
 
 - Comprehensive `.gitignore` preventing accidental commits of sensitive configuration files (`.env`).
 - Separation of concerns between the Express server and the ORM logic.
