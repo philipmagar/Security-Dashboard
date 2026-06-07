@@ -1,31 +1,36 @@
-# Security Dashboard API (Mini-SIEM)
+# Mini-SIEM (Security Information and Event Management)
 
-A robust, scalable Node.js backend built to support the Security Dashboard (Mini-SIEM) application. This API handles log aggregation, real-time alert processing, and secure user management.
+**Final Year Capstone Project — B.Sc. Computer Science and Information Technology (CSIT)**
 
-## Technologies Used
+---
 
-- **Runtime Environment:** Node.js
-- **Web Framework:** Express.js
-- **ORM:** Prisma
-- **Database:** PostgreSQL (Containerized with Docker)
-- **Authentication:** JSON Web Tokens (JWT) & bcrypt for secure password hashing
-- **Development Tooling:** Nodemon, dotenv, cors
+## Project Overview
 
-## Architecture & Features
+Welcome to **Mini-SIEM**, a lightweight Security Information and Event Management backend.
 
-- **Secure User Management:** Role-based access control with hashed passwords and secure JWT authentication.
-- **Log Ingestion:** Highly efficient data models for aggregating security logs across multiple sources.
-- **Alerting System:** Built-in alert status tracking and severity management for incident response.
-- **Containerized Database:** Simple and reproducible local development environment utilizing Docker Compose.
+In today's digital landscape, monitoring security events is critical. However, enterprise-grade tools are often resource-heavy and complex. I built this project to demonstrate how core security logging, real-time alert processing, and secure user authentication can be achieved efficiently using modern, lightweight web technologies.
 
-##  Getting Started
+This project serves as a showcase of my ability to design, build, and secure a backend API from the ground up.
 
-### Prerequisites
+## Key Technical Skills Demonstrated
 
-Ensure you have the following installed on your local machine:
-- [Node.js](https://nodejs.org/en/) (v16+ recommended)
-- [Docker](https://www.docker.com/products/docker-desktop) and Docker Compose
-- [Git](https://git-scm.com/)
+- **API Design:** Built a scalable, low-latency RESTful API using **Node.js** and **Express.js**.
+- **Information Security:** Implemented robust user authentication flows using **bcrypt** for password hashing and stateless **JSON Web Tokens (JWT)** for session management.
+- **Software Architecture:** Structured the codebase using the **Model-View-Controller (MVC)** pattern, ensuring a clean separation between routing, business logic, and data access.
+- **Security Logging:** Engineered an event auditing system that continuously monitors and logs access violations and system anomalies.
+
+## Technology Stack
+
+- **Backend:** Node.js, Express.js
+- **Authentication:** JWT, bcrypt
+- **Data Storage:** In-Memory Data Store (Optimized for prototyping and rapid testing)
+- **Environment Management:** dotenv, Nodemon
+
+---
+
+## How to Run the Project
+
+Want to see it in action? Follow these simple steps to run the API locally.
 
 ### 1. Clone the Repository
 
@@ -34,56 +39,30 @@ git clone https://github.com/philipmagar/Security-Dashboard.git
 cd Security-Dashboard/backend-node
 ```
 
-### 2. Environment Configuration
+### 2. Set Up Environment Variables
 
-Create a `.env` file in the root of your project:
+Create a `.env` file in the root directory and add the following:
 
 ```env
-# Server Port Configuration
-PORT=5001
-
-# PostgreSQL Database Connection
-# Adjust the port if necessary (e.g., 5433 if 5432 is in use)
-DATABASE_URL="postgresql://postgres:postgres@localhost:5433/minisiem?schema=public"
+PORT=5001(port 5000 was occupied by Docker Container)
+JWT_SECRET=your-secure-academic-secret-key
 ```
 
-### 3. Start the Database
-
-Launch the containerized PostgreSQL instance in the background:
-
-```bash
-docker compose up -d
-```
-
-### 4. Install Dependencies & Setup Prisma
-
-Install project packages and sync the database schema:
+### 3. Install & Start
 
 ```bash
 npm install
-npx prisma db push
-npx prisma generate
-```
-
-### 5. Run the Server
-
-Start the development server with hot-reloading enabled:
-
-```bash
 npm run dev
 ```
 
-The server will be available at `http://localhost:5001`. A basic health-check endpoint is exposed at `/api/health`.
+The server will start at `http://localhost:5001`.
 
-## Database Schema Overview
+### Core API Endpoints
 
-The database relies on three core entities:
-- **User**: Represents dashboard administrators and operators (`email`, `password`, `role`).
-- **Log**: Records incoming system logs and metadata (`source`, `level`, `message`).
-- **Alert**: Tracks active incidents and anomalies (`title`, `severity`, `status`).
+- `GET /api/health` — Verifies the server is running.
+- `POST /api/auth/register` — Registers a new user with a securely hashed password.
+- `POST /api/auth/login` — Authenticates the user and returns a JWT token.
 
-## Security Measures
+---
 
-- Comprehensive `.gitignore` preventing accidental commits of sensitive configuration files (`.env`).
-- Separation of concerns between the Express server and the ORM logic.
-- Environment variables utilized for all sensitive routing and connection strings.
+_This project was developed by Philip Magar in partial fulfillment of the requirements for the degree of B.Sc. CSIT._
