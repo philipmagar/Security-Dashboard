@@ -1,6 +1,6 @@
 # Mini-SIEM (Security Information and Event Management)
 
-**Final Year Capstone Project — B.Sc. Computer Science and Information Technology (CSIT)**
+**A personal learning project exploring backend security and API design.**
 
 ---
 
@@ -16,8 +16,9 @@ This project serves as a showcase of my ability to design, build, and secure a b
 
 - **API Design:** Built a scalable, low-latency RESTful API using **Node.js** and **Express.js**.
 - **Information Security:** Implemented robust user authentication flows using **bcrypt** for password hashing and stateless **JSON Web Tokens (JWT)** for session management.
+- **Role-Based Access Control (RBAC):** Integrated strict middleware authorization distinguishing between `admin`, `operator`, and standard `user` roles.
 - **Software Architecture:** Structured the codebase using the **Model-View-Controller (MVC)** pattern, ensuring a clean separation between routing, business logic, and data access.
-- **Security Logging:** Engineered an event auditing system that continuously monitors and logs access violations and system anomalies.
+- **Security Logging & Metrics:** Engineered an event auditing system that continuously monitors and logs access violations, failed login attempts, and system anomalies, complete with metrics aggregation.
 
 ## Technology Stack
 
@@ -59,10 +60,21 @@ The server will start at `http://localhost:5001`.
 
 ### Core API Endpoints
 
+**Health & Status:**
 - `GET /api/health` — Verifies the server is running.
+
+**Authentication:**
 - `POST /api/auth/register` — Registers a new user with a securely hashed password.
 - `POST /api/auth/login` — Authenticates the user and returns a JWT token.
 
+**User Operations:**
+- `GET /api/users/profile` — Retrieves the authenticated user's profile (Requires JWT).
+
+**Admin & Security Operations (RBAC Protected):**
+- `GET /api/admin/users` — Lists all registered users (Requires `admin` role).
+- `GET /api/security/metrics` — Aggregates security events like failed/successful logins (Requires `admin` or `operator` role).
+- `GET /api/security/logs` — Retrieves recent system audit logs (Requires `admin` or `operator` role).
+
 ---
 
-_This project was developed by Philip Magar in partial fulfillment of the requirements for the degree of B.Sc. CSIT._
+_This project was developed by Philip Magar as a personal learning initiative._
