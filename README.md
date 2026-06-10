@@ -180,7 +180,9 @@ Server starts at `http://localhost:5001`.
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | GET | `/api/security/metrics` | admin, operator | Event counts, brute force state, alert overview |
-| GET | `/api/security/logs` | admin, operator | Filterable audit log (`?event=LOGIN&success=false&limit=100`) |
+| GET | `/api/security/logs` | admin, operator | Filterable, paginated audit log (`?event=LOGIN&success=false&userEmail=test&ip=127.0.0.1&startDate=...&page=1&limit=50`) |
+| GET | `/api/security/logs/:id` | admin, operator | Single audit log by ID |
+| GET | `/api/security/suspicious-ips` | admin, operator | Top threats and brute-force attempts aggregated by IP |
 | GET | `/api/security/brute-force` | admin, operator | Currently tracked IPs and locked accounts |
 
 ### Alerts
