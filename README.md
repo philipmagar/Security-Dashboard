@@ -1,37 +1,124 @@
-# Mini-SIEM (Security Information and Event Management)
+# Mini-SIEM — Security Information and Event Management
 
-**A personal learning project exploring backend security and API design.**
+A lightweight SIEM backend built with Node.js and Express, demonstrating core security engineering concepts: API rate limiting, brute force detection, role-based access control, real-time security alerting, and dashboard analytics.
 
 ---
 
 ## Project Overview
 
-Welcome to **Mini-SIEM**, a lightweight Security Information and Event Management backend.
-
-In today's digital landscape, monitoring security events is critical. However, enterprise-grade tools are often resource-heavy and complex. I built this project to demonstrate how core security logging, real-time alert processing, and secure user authentication can be achieved efficiently using modern, lightweight web technologies.
-
-This project serves as a showcase of my ability to design, build, and secure a backend API from the ground up.
-
-## Key Technical Skills Demonstrated
-
-- **API Design:** Built a scalable, low-latency RESTful API using **Node.js** and **Express.js**.
-- **Information Security:** Implemented robust user authentication flows using **bcrypt** for password hashing and stateless **JSON Web Tokens (JWT)** for session management.
-- **Role-Based Access Control (RBAC):** Integrated strict middleware authorization distinguishing between `admin`, `operator`, and standard `user` roles.
-- **Software Architecture:** Structured the codebase using the **Model-View-Controller (MVC)** pattern, ensuring a clean separation between routing, business logic, and data access.
-- **Security Logging & Metrics:** Engineered an event auditing system that continuously monitors and logs access violations, failed login attempts, and system anomalies, complete with metrics aggregation.
-
-## Technology Stack
-
-- **Backend:** Node.js, Express.js
-- **Authentication:** JWT, bcrypt
-- **Data Storage:** In-Memory Data Store (Optimized for prototyping and rapid testing)
-- **Environment Management:** dotenv, Nodemon
+Mini-SIEM is a backend-only API that simulates the core functionality of a security operations platform. It monitors authentication events, detects attack patterns, generates structured alerts, and exposes aggregated metrics for a security dashboard.
 
 ---
 
-## How to Run the Project
+## Technology Stack
 
-Want to see it in action? Follow these simple steps to run the API locally.
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js |
+| Framework | Express.js v5 |
+| Authentication | JWT (jsonwebtoken), bcrypt |
+| Rate Limiting | express-rate-limit |
+| Data Store | In-memory (Map / Array) |
+| Environment | dotenv, nodemon |
+
+---
+
+## Architecture
+
+```
+backend-node/
+├── index.js                        # Entry point, middleware wiring, route registration
+└── src/
+    ├── controllers/
+    │   ├── auth.controller.js      # Register, login with brute force integration
+    │   ├── user.controller.js      # User profile
+    │   ├── admin.controller.js     # User management (admin only)
+    │   ├── security.controller.js  # Security metrics, logs, brute force status
+    │   ├── alert.controller.js     # Alert CRUD and acknowledgement
+    │   └── dashboard.controller.js # Summary, timeline, threat level
+    ├── middleware/
+    │   ├── auth.middleware.js       # JWT verification, RBAC
+    │   ├── rateLimiter.middleware.js# Global, login, and alert rate limiters
+    │   └── bruteForce.middleware.js # In-memory IP+email lockout tracker
+    ├── models/
+    │   ├── user.model.js           # In-memory user store
+    │   └── alert.model.js          # In-memory alert store
+    ├── routes/
+    │   ├── auth.routes.js          # /api/auth/*
+    │   ├── user.routes.js          # /api/users/*
+    │   ├── admin.routes.js         # /api/admin/*
+    │   ├── security.routes.js      # /api/security/*
+    │   ├── alert.routes.js         # /api/alerts/*
+    │   └── dashboard.routes.js     # /api/dashboard/*
+    ├── services/
+    │   └── alert.service.js        # Alert creation, filtering, stats engine
+    └── utils/
+        └── logger.js               # Security event logger with auto-alert triggers
+```
+
+---
+
+## Security Features
+
+### 1. API Rate Limiting
+
+Three tiered limiters using `express-rate-limit`:
+
+| Limiter | Applied To | Limit |
+|---------|-----------|-------|
+| Global | All `/api/*` routes | 200 requests / 15 min per IP |
+| Login | `POST /api/auth/login` | 10 failures / 15 min per IP |
+| Alert | `GET /api/alerts/*` | 60 requests / min per IP |
+
+Exceeding a limit fires a `RATE_LIMIT_EXCEEDED` or `LOGIN_RATE_LIMIT` alert automatically.
+
+### 2. Brute Force Detection
+
+Login is protected by a two-layer chain:
+
+```
+POST /api/auth/login
+  1. loginLimiter    — IP-based cap (express-rate-limit)
+  2. bruteForceCheck — IP + email lockout (in-memory)
+  3. login handler   — clears counter on success
+```
+
+| Event | Action |
+|-------|--------|
+| 3 failed attempts | `MULTIPLE_FAILED_LOGINS` alert (severity: high) |
+| 5 failed attempts | `BRUTE_FORCE_DETECTED` alert (severity: critical) + 30 min lockout |
+| Successful login | Counter cleared |
+
+Locked accounts receive HTTP `423` with `retryAfter` and `lockedUntil` in the response.
+
+### 3. Role-Based Access Control (RBAC)
+
+Three roles with progressive access:
+
+| Role | Access Level |
+|------|-------------|
+| `user` | Own profile only |
+| `operator` | Security logs, metrics, alerts (read/write) |
+| `admin` | All routes including user management and alert deletion |
+
+### 4. Security Alert System
+
+Alerts are auto-generated by the logger and middleware on detection of:
+
+- `BRUTE_FORCE_DETECTED`
+- `LOGIN_RATE_LIMIT`
+- `RATE_LIMIT_EXCEEDED`
+- `MULTIPLE_FAILED_LOGINS`
+- `UNAUTHORIZED_ACCESS`
+- `TOKEN_INVALID`
+- `ROLE_ESCALATION_ATTEMPT`
+- `SUSPICIOUS_ACTIVITY`
+
+The alert store is bounded to the last 1,000 entries and supports severity-based filtering, pagination, and acknowledgement.
+
+---
+
+## Running the Project
 
 ### 1. Clone the Repository
 
@@ -40,41 +127,104 @@ git clone https://github.com/philipmagar/Security-Dashboard.git
 cd Security-Dashboard/backend-node
 ```
 
-### 2. Set Up Environment Variables
+### 2. Environment Variables
 
-Create a `.env` file in the root directory and add the following:
+Create a `.env` file:
 
 ```env
-PORT=5001(port 5000 was occupied by Docker Container)
-JWT_SECRET=your-secure-academic-secret-key
+PORT=5001
+JWT_SECRET=your-secure-secret-key
 ```
 
-### 3. Install & Start
+### 3. Install and Start
 
 ```bash
 npm install
 npm run dev
 ```
 
-The server will start at `http://localhost:5001`.
-
-### Core API Endpoints
-
-**Health & Status:**
-- `GET /api/health` — Verifies the server is running.
-
-**Authentication:**
-- `POST /api/auth/register` — Registers a new user with a securely hashed password.
-- `POST /api/auth/login` — Authenticates the user and returns a JWT token.
-
-**User Operations:**
-- `GET /api/users/profile` — Retrieves the authenticated user's profile (Requires JWT).
-
-**Admin & Security Operations (RBAC Protected):**
-- `GET /api/admin/users` — Lists all registered users (Requires `admin` role).
-- `GET /api/security/metrics` — Aggregates security events like failed/successful logins (Requires `admin` or `operator` role).
-- `GET /api/security/logs` — Retrieves recent system audit logs (Requires `admin` or `operator` role).
+Server starts at `http://localhost:5001`.
 
 ---
 
-_This project was developed by Philip Magar as a personal learning initiative._
+## API Reference
+
+### Health
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/health` | None | Server status check |
+
+### Authentication
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| POST | `/api/auth/register` | None | Register new user (`email`, `password`, `role`) |
+| POST | `/api/auth/login` | None | Login — returns JWT. Rate limited + brute force protected |
+| GET | `/api/auth/profile` | Any | Authenticated user info |
+
+### Users
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/users/profile` | Any | Current user profile |
+
+### Admin
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/admin/users` | admin | List all registered users |
+
+### Security
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/security/metrics` | admin, operator | Event counts, brute force state, alert overview |
+| GET | `/api/security/logs` | admin, operator | Filterable audit log (`?event=LOGIN&success=false&limit=100`) |
+| GET | `/api/security/brute-force` | admin, operator | Currently tracked IPs and locked accounts |
+
+### Alerts
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/alerts` | admin, operator | List alerts (`?severity=high&type=BRUTE_FORCE_DETECTED&page=1&limit=50`) |
+| GET | `/api/alerts/stats` | admin, operator | Counts by severity and type |
+| GET | `/api/alerts/types` | admin, operator | Supported alert type identifiers |
+| GET | `/api/alerts/:id` | admin, operator | Single alert by ID |
+| POST | `/api/alerts` | admin, operator | Create manual alert |
+| PATCH | `/api/alerts/acknowledge-all` | admin, operator | Bulk acknowledge (optional `severity`, `type` filter) |
+| PATCH | `/api/alerts/:id/acknowledge` | admin, operator | Acknowledge single alert |
+| DELETE | `/api/alerts/:id` | admin | Delete alert |
+
+### Dashboard
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/dashboard/summary` | admin, operator | Full overview: users, events, alerts, brute force, uptime |
+| GET | `/api/dashboard/timeline` | admin, operator | Events by hour (`?hours=24`, max 168) |
+| GET | `/api/dashboard/threat-level` | admin, operator | Computed score: `LOW / MEDIUM / HIGH / CRITICAL` |
+
+---
+
+## Threat Level Scoring
+
+The `/api/dashboard/threat-level` endpoint computes a live score:
+
+| Factor | Points |
+|--------|--------|
+| Each critical alert | +10 |
+| Each high alert | +5 |
+| Each medium alert | +2 |
+| Each locked account | +8 |
+| Each failed event in last hour | +1 |
+
+| Score | Level |
+|-------|-------|
+| 0–4 | LOW |
+| 5–14 | MEDIUM |
+| 15–29 | HIGH |
+| 30+ | CRITICAL |
+
+---
+
+_Developed by Philip Magar_

@@ -13,7 +13,8 @@ const securityLogs = [];
  */
 const logSecurityEvent = (event, userEmail, success, details, ip = 'unknown') => {
     const timestamp = new Date().toISOString();
-    const logEntry = { timestamp, event, userEmail, success, details, ip };
+    const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const logEntry = { id, timestamp, event, userEmail, success, details, ip };
     securityLogs.push(logEntry);
 
     console.log(

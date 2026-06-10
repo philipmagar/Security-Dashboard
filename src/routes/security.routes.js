@@ -1,12 +1,16 @@
 const express = require('express');
 const { authenticateUser, authorizeRoles } = require('../middleware/auth.middleware');
-const { getMetrics, getLogs, getBruteForce } = require('../controllers/security.controller');
+const { getMetrics, getLogs, getLogById, getBruteForce, getSuspiciousIPs } = require('../controllers/security.controller');
 
 const router = express.Router();
 
+router.use(authenticateUser, authorizeRoles('admin', 'operator'));
+
 // Security logs, metrics, and brute-force state — admin + operator only
-router.get('/metrics',     authenticateUser, authorizeRoles('admin', 'operator'), getMetrics);
-router.get('/logs',        authenticateUser, authorizeRoles('admin', 'operator'), getLogs);
-router.get('/brute-force', authenticateUser, authorizeRoles('admin', 'operator'), getBruteForce);
+router.get('/metrics', getMetrics);
+router.get('/logs', getLogs);
+router.get('/logs/:id', getLogById);
+router.get('/suspicious-ips', getSuspiciousIPs);
+router.get('/brute-force', getBruteForce);
 
 module.exports = router;
