@@ -4,7 +4,7 @@ A lightweight SIEM (Security Information and Event Management) platform built wi
 
 ---
 
-## 📁 Repository Structure
+##  Repository Structure
 
 This is a monorepo containing both the backend API and the frontend web application.
 
@@ -16,7 +16,7 @@ Security-Dashboard/
 
 ---
 
-## ✨ Features
+## Features
 
 ### Backend Security Engine
 - **API Rate Limiting:** Tiered limiters using `express-rate-limit` for global endpoints, logins, and alerts.
@@ -33,7 +33,7 @@ Security-Dashboard/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Start the Backend Server
 
@@ -63,7 +63,7 @@ Vite will provide a local URL (typically `http://localhost:5173`) where you can 
 
 ---
 
-## 🔧 API Reference Overview
+##  API Reference Overview
 
 The backend exposes several critical endpoints for security monitoring:
 
