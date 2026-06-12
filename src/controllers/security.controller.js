@@ -116,4 +116,32 @@ const getSuspiciousIPs = (req, res) => {
     });
 };
 
-module.exports = { getMetrics, getLogs, getLogById, getBruteForce, getSuspiciousIPs };
+const getRiskScores = (req, res) => {
+    const ipScores = {};
+    
+    securityLogs.forEach(log => {
+        if (!log.ip || log.ip === 'unknown') return;
+        if (!ipScores[log.ip]) ipScores[log.ip] = 0;
+        
+        if (log.event === 'LOGIN' && !log.success) ipScores[log.ip] += 1;
+        if (log.event === 'UNAUTHORIZED_ACCESS') ipScores[log.ip] += 5;
+        if (log.event === 'TOKEN_INVALID') ipScores[log.ip] += 5;
+        if (log.event === 'ROLE_ESCALATION_ATTEMPT') ipScores[log.ip] += 20;
+    });
+
+    const bruteForce = getBruteForceStats();
+    bruteForce.entries.forEach(entry => {
+        if (!ipScores[entry.ip]) ipScores[entry.ip] = 0;
+        if (entry.isLocked) ipScores[entry.ip] += 15;
+    });
+
+    const scores = Object.keys(ipScores).map(ip => ({
+        ip,
+        score: ipScores[ip],
+        level: ipScores[ip] > 50 ? 'CRITICAL' : ipScores[ip] > 20 ? 'HIGH' : ipScores[ip] > 5 ? 'MEDIUM' : 'LOW'
+    })).sort((a, b) => b.score - a.score);
+
+    res.status(200).json(scores);
+};
+
+module.exports = { getMetrics, getLogs, getLogById, getBruteForce, getSuspiciousIPs, getRiskScores };

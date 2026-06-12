@@ -1,5 +1,5 @@
 const { securityLogs, getSecurityMetrics } = require('../utils/logger');
-const { getAlertStats } = require('../services/alert.service');
+const { getAlertStats, getAlerts } = require('../services/alert.service');
 const { getBruteForceStats } = require('../middleware/bruteForce.middleware');
 const { users } = require('../models/user.model');
 const os = require('os');
@@ -52,7 +52,10 @@ const getSummary = (req, res) => {
             loginSuccessRate: `${loginSuccessRate}%`,
             recentActivity,
         },
-        alerts: alertStats,
+        alerts: {
+            ...alertStats,
+            recent: getAlerts({ limit: 5 }).data
+        },
         bruteForce: {
             totalTracked: bruteForce.totalTrackedIPs,
             currentlyLocked: bruteForce.currentlyLocked,

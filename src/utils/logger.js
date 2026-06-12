@@ -47,6 +47,23 @@ const logSecurityEvent = (event, userEmail, success, details, ip = 'unknown') =>
 
     // Unauthorized access attempt (403 equivalent events)
     if (event === 'UNAUTHORIZED_ACCESS') {
+        const recentWindow = Date.now() - 5 * 60 * 1000; // last 5 minutes
+        const recentAccessDenied = securityLogs.filter(
+            l => l.event === 'UNAUTHORIZED_ACCESS' &&
+                 l.ip === ip &&
+                 new Date(l.timestamp).getTime() > recentWindow
+        ).length;
+
+        if (recentAccessDenied === 5) {
+            createAlert({
+                type: 'ACCESS_DENIED_SPIKE',
+                severity: 'high',
+                source: ip,
+                message: `Spike in unauthorized access attempts from IP ${ip}`,
+                details: { ip, recentAccessDenied },
+            });
+        }
+
         createAlert({
             type: 'UNAUTHORIZED_ACCESS',
             severity: 'medium',
@@ -58,6 +75,23 @@ const logSecurityEvent = (event, userEmail, success, details, ip = 'unknown') =>
 
     // Token-related failures
     if (event === 'TOKEN_INVALID') {
+        const recentWindow = Date.now() - 5 * 60 * 1000; // last 5 minutes
+        const recentInvalidTokens = securityLogs.filter(
+            l => l.event === 'TOKEN_INVALID' &&
+                 l.ip === ip &&
+                 new Date(l.timestamp).getTime() > recentWindow
+        ).length;
+
+        if (recentInvalidTokens === 5) {
+            createAlert({
+                type: 'INVALID_TOKEN_SPIKE',
+                severity: 'high',
+                source: ip,
+                message: `Spike in invalid token attempts from IP ${ip}`,
+                details: { ip, recentInvalidTokens },
+            });
+        }
+
         createAlert({
             type: 'TOKEN_INVALID',
             severity: 'low',
