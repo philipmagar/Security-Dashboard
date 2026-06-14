@@ -1,4 +1,14 @@
 /* Clear default Vite App.css */
-.app {
-  width: 100%;
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  height: 100vh;
+  padding-bottom: 40px;
 }

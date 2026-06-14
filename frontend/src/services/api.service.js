@@ -20,3 +20,13 @@ export const fetchRiskScores = async () => {
   if (!response.ok) throw new Error('Failed to fetch risk scores');
   return response.json();
 };
+
+export const fetchLogs = async () => {
+  const response = await fetch(`${API_BASE_URL}/security/logs`, {
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+    },
+  });
+  if (!response.ok) throw new Error('Failed to fetch logs');
+  return response.json();
+};
