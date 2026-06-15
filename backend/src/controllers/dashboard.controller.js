@@ -37,6 +37,9 @@ const getSummary = (req, res) => {
             nodeVersion: process.version,
             platform: os.platform(),
             memoryUsageMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+            totalMemoryMB: Math.round(os.totalmem() / 1024 / 1024),
+            freeMemoryMB: Math.round(os.freemem() / 1024 / 1024),
+            loadAvg: os.loadavg().map(v => Number(v.toFixed(2))),
         },
         users: {
             total: users.length,

@@ -15,6 +15,21 @@ const register = async (req, res) => {
         return res.status(400).json({ message: 'Email, password and role are required' });
     }
 
+    if (password.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+    }
+    
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    if (!(hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar)) {
+        return res.status(400).json({ 
+            message: 'Password must contain uppercase, lowercase, number, and special character' 
+        });
+    }
+
     const validRoles = ['admin', 'operator', 'user'];
     if (!validRoles.includes(role)) {
         return res.status(400).json({

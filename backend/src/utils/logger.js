@@ -17,6 +17,11 @@ const logSecurityEvent = (event, userEmail, success, details, ip = 'unknown') =>
     const logEntry = { id, timestamp, event, userEmail, success, details, ip };
     securityLogs.push(logEntry);
 
+    // Prevent memory leaks by limiting the array size
+    if (securityLogs.length > 10000) {
+        securityLogs.splice(0, securityLogs.length - 10000);
+    }
+
     console.log(
         `[SECURITY LOG] ${timestamp} | Event: ${event} | User: ${userEmail} | ` +
         `Success: ${success} | IP: ${ip} | Details: ${details}`
