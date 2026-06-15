@@ -16,6 +16,10 @@ const Sidebar = () => {
           <span className="icon">📝</span>
           Logs
         </NavLink>
+        <NavLink to="/alerts" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+          <span className="icon">🔔</span>
+          Alerts
+        </NavLink>
       </nav>
     </aside>
   );

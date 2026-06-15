@@ -1,11 +1,15 @@
 :root {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0d1117;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: #050505;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(20, 40, 100, 0.15), transparent 35%),
+    radial-gradient(circle at 85% 30%, rgba(88, 166, 255, 0.1), transparent 35%);
+  background-attachment: fixed;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
