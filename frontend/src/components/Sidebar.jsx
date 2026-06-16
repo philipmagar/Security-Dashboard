@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { LayoutDashboard, FileText, Bell } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
@@ -9,15 +10,15 @@ const Sidebar = () => {
       </div>
       <nav className="sidebar-nav">
         <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-          <span className="icon">📊</span>
+          <LayoutDashboard size={20} className="icon" />
           Dashboard
         </NavLink>
         <NavLink to="/logs" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-          <span className="icon">📝</span>
+          <FileText size={20} className="icon" />
           Logs
         </NavLink>
         <NavLink to="/alerts" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-          <span className="icon">🔔</span>
+          <Bell size={20} className="icon" />
           Alerts
         </NavLink>
       </nav>

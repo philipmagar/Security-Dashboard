@@ -1,16 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
-  font-family: 'Outfit', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --bg-color: #050505;
+  --bg-secondary: #0a0a0a;
+  --bg-card: rgba(15, 15, 15, 0.7);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-primary: #f0f0f0;
+  --text-secondary: #9ca3af;
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: dark;
-  color: rgba(255, 255, 255, 0.9);
-  background-color: #050505;
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(20, 40, 100, 0.15), transparent 35%),
-    radial-gradient(circle at 85% 30%, rgba(88, 166, 255, 0.1), transparent 35%);
-  background-attachment: fixed;
-
+  color: var(--text-primary);
+  background-color: var(--bg-color);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -22,6 +28,11 @@ body {
   display: flex;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--bg-color);
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.05), transparent 35%),
+    radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05), transparent 35%);
+  background-attachment: fixed;
 }
 
 #root {
@@ -30,4 +41,62 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Minimal Card Styles */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Minimal Table Styles */
+table, .data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+}
+
+th, .data-table th {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+td, .data-table td {
+  padding: 16px;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+
+tbody tr, .data-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+tbody tr:hover, .data-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+tbody tr:last-child td, .data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mt-2 {
+  margin-top: 2rem;
 }

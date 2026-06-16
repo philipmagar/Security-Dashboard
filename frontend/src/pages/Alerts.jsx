@@ -10,9 +10,21 @@ import {
 } from '../services/api.service';
 import './Alerts.css';
 
+import { ShieldAlert, AlertCircle, AlertTriangle, Info, Shield, Trash2 } from 'lucide-react';
+
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
-const severityIcon = (s) => ({ critical: '🔴', high: '🟠', medium: '🟡', low: '🟢', info: '🔵' }[s] || '⚪');
+const SeverityIcon = ({ s }) => {
+  const props = { size: 16, style: { display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' } };
+  switch(s) {
+    case 'critical': return <ShieldAlert {...props} color="#f85149" />;
+    case 'high': return <AlertTriangle {...props} color="#d29922" />;
+    case 'medium': return <AlertTriangle {...props} color="#58a6ff" />;
+    case 'low': return <AlertCircle {...props} color="#3fb950" />;
+    case 'info': return <Info {...props} color="#1f6feb" />;
+    default: return <AlertCircle {...props} color="#8b949e" />;
+  }
+};
 
 const timeAgo = (iso) => {
   const diff = Date.now() - new Date(iso).getTime();
@@ -81,24 +93,24 @@ export default function Alerts() {
       try {
         const res = await fetchAlertTypes();
         setAlertTypes(res.types || []);
-      } catch (_) {}
+      } catch (err) {
+        console.error('Failed to load alert types', err);
+      }
     };
     loadTypes();
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     load();
     const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
   }, [load]);
 
-  // Reset page on filter change
-  useEffect(() => { setPage(1); }, [filters]);
-
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleFilterChange = (e) =>
+  const handleFilterChange = (e) => {
     setFilters((f) => ({ ...f, [e.target.name]: e.target.value }));
+    setPage(1);
+  };
 
   const handleAck = async (id) => {
     try {
@@ -167,7 +179,7 @@ export default function Alerts() {
     return <div className="al-loading"><span className="al-spinner" />Loading Alerts…</div>;
 
   if (error)
-    return <div className="al-error">⚠ {error}</div>;
+    return <div className="al-error"><AlertTriangle size={16} style={{display: 'inline-block', verticalAlign: 'middle'}}/> {error}</div>;
 
   const unacknowledged = stats?.unacknowledged ?? 0;
 
@@ -233,7 +245,7 @@ export default function Alerts() {
           </select>
 
           {(filters.severity || filters.type || filters.acknowledged) && (
-            <button className="al-btn al-btn--ghost" onClick={() => setFilters({ severity: '', type: '', acknowledged: '' })}>
+            <button className="al-btn al-btn--ghost" onClick={() => { setFilters({ severity: '', type: '', acknowledged: '' }); setPage(1); }}>
               ✕ Clear
             </button>
           )}
@@ -253,7 +265,7 @@ export default function Alerts() {
       <div className="al-table-wrap">
         {alerts.length === 0 ? (
           <div className="al-empty">
-            <div className="al-empty-icon">🛡</div>
+            <div className="al-empty-icon"><Shield size={48} /></div>
             <p>No alerts match your filters</p>
           </div>
         ) : (
@@ -292,7 +304,7 @@ export default function Alerts() {
                   </td>
                   <td>
                     <span className={`al-badge al-sev--${alert.severity}`}>
-                      {severityIcon(alert.severity)} {alert.severity}
+                      <SeverityIcon s={alert.severity} /> {alert.severity}
                     </span>
                   </td>
                   <td>
@@ -324,7 +336,7 @@ export default function Alerts() {
                       title="Delete"
                       onClick={() => setDeleteTarget(alert.id)}
                       id={`del-${alert.id}`}
-                    >🗑</button>
+                    ><Trash2 size={16} /></button>
                   </td>
                 </tr>
               ))}
@@ -353,7 +365,7 @@ export default function Alerts() {
               <button className="al-modal-close" onClick={() => setShowCreate(false)}>✕</button>
             </div>
             <form className="al-form" onSubmit={handleCreate} noValidate>
-              {formError && <div className="al-form-error">⚠ {formError}</div>}
+              {formError && <div className="al-form-error"><AlertTriangle size={16} style={{display: 'inline-block', verticalAlign: 'middle'}}/> {formError}</div>}
 
               <label className="al-label">
                 Alert Type <span className="al-req">*</span>
