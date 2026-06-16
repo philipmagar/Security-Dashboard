@@ -8,8 +8,9 @@ A lightweight SIEM (Security Information and Event Management) platform built wi
 
 ```text
 mini-siem/
-├── backend/     # Node.js & Express API — security engine, alerting, RBAC
-└── frontend/    # React & Vite SPA — dashboard, logs explorer, alert management
+├── backend/           # Node.js & Express API — security engine, alerting, RBAC
+├── frontend/          # React & Vite SPA — dashboard, logs explorer, alert management
+└── security_python/   # Python Engine — PostgreSQL integration, brute force detection
 ```
 
 ---
@@ -24,10 +25,16 @@ mini-siem/
 - **Risk Scoring & Threat Levels:** Computed risk scores per IP based on behavioral history (`LOW` → `CRITICAL`).
 - **Security Logs:** Filterable, paginated audit trail of all system events.
 
+### Python Detection Engine
+- **PostgreSQL Integration:** Connects to the `minisiem` database using `psycopg2`.
+- **Brute Force Detection:** Polling engine that analyzes authentication logs to dynamically detect sustained attacks.
+- **Automated Alerting:** Automatically persists high-severity alerts back into the central database.
+
 ### Frontend Operations Dashboard
 
 #### Dashboard
 - Real-time metrics: total events, login success rate, active brute force threats, unacknowledged alerts.
+- **Risk Score Analysis:** Dynamic bar charts using Recharts to visualize high-risk entities.
 - High-risk entity table with IP addresses, risk levels, and computed scores.
 - Recent alerts timeline panel with severity colour-coding.
 - Auto-refreshes every 30 seconds.
@@ -107,8 +114,10 @@ Vite will serve the app at `http://localhost:5173`.
 | Layer | Technology |
 |-------|-----------|
 | Backend | Node.js, Express 5, express-rate-limit, jsonwebtoken, bcrypt |
-| Frontend | React 18, Vite, React Router v6 |
-| Styling | Vanilla CSS (dark theme, glassmorphism) |
+| Detection Engine | Python, psycopg2 |
+| Frontend | React 19, Vite, React Router v7, Recharts, Lucide React |
+| Database | PostgreSQL 15 (Docker) |
+| Styling | Vanilla CSS (minimal dark theme, glassmorphism) |
 
 ---
 
