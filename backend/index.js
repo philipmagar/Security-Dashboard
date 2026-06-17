@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const morgan = require('morgan');
 
 // ── Route imports ───────────────────────────────────────────────────────────
 const authRoutes      = require('./src/routes/auth.routes');
@@ -18,6 +20,8 @@ dotenv.config();
 const app = express();
 
 // ── Core middleware ─────────────────────────────────────────────────────────
+app.use(helmet()); // Secure HTTP headers
+app.use(morgan('combined')); // Standard HTTP request logging
 app.use(cors());
 app.use(express.json());
 
@@ -60,3 +64,5 @@ app.listen(PORT, () => {
     console.log(`Dashboard:  GET /api/dashboard/summary`);
     console.log(`Security:   GET /api/security/metrics\n`);
 });
+
+// Triggered nodemon restart to clear brute-force lockout
