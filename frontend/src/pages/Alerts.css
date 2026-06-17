@@ -95,11 +95,19 @@
   color: #8b949e;
 }
 
+/* ── Overview (stats + chart) ───────────────────────────────────────────── */
+.al-overview {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  align-items: start;
+}
+
 /* ── Stats bar ───────────────────────────────────────────────────────────── */
 .al-stats-bar {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.75rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
@@ -151,6 +159,53 @@
 .al-stat--low      { border-top: 3px solid #3fb950; }
 .al-stat--low .al-stat-num { color: #3fb950; }
 .al-stat--info     { border-top: 3px solid #8b949e; }
+
+/* ── Severity Chart ─────────────────────────────────────────────────────── */
+.al-chart-section {
+  background: rgba(22, 27, 34, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 1rem 1rem 0.5rem;
+}
+
+.al-chart-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.al-chart-title-row h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #c9d1d9;
+}
+
+.al-chart-icon { color: #a371f7; }
+
+.al-chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 160px;
+  color: #8b949e;
+  font-size: 0.85rem;
+}
+
+.al-chart-tooltip {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  color: #c9d1d9;
+}
 
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
 .al-toolbar {
@@ -327,7 +382,7 @@
 .al-sev--low      { background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3); }
 .al-sev--info     { background: rgba(139, 148, 158, 0.15); color: #8b949e; border: 1px solid rgba(139, 148, 158, 0.3); }
 
-/* ── Type / message / source ─────────────────────────────────────────────── */
+/* ── Type / message / source / created-at ───────────────────────────────── */
 .al-type {
   font-size: 0.8rem;
   color: #a371f7;
@@ -336,23 +391,42 @@
 }
 
 .al-message {
-  max-width: 280px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .al-source {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  color: #8b949e;
   white-space: nowrap;
 }
 
-.al-time {
-  color: #8b949e;
-  font-size: 0.82rem;
+.al-ip-chip {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #a371f7;
+}
+
+.al-created-at {
   white-space: nowrap;
+}
+
+.al-date-main {
+  display: block;
+  font-size: 0.82rem;
+  color: #c9d1d9;
+  font-variant-numeric: tabular-nums;
+}
+
+.al-date-ago {
+  display: block;
+  font-size: 0.75rem;
+  color: #8b949e;
+  margin-top: 1px;
 }
 
 /* ── Status ──────────────────────────────────────────────────────────────── */
@@ -383,12 +457,12 @@
   transition: all 0.2s;
 }
 
-.al-icon-btn--ack {
+.al-icon-btn--resolve {
   background: rgba(63, 185, 80, 0.1);
   color: #3fb950;
   border: 1px solid rgba(63, 185, 80, 0.25);
 }
-.al-icon-btn--ack:hover { background: rgba(63, 185, 80, 0.25); transform: scale(1.1); }
+.al-icon-btn--resolve:hover { background: rgba(63, 185, 80, 0.25); transform: scale(1.1); }
 
 .al-icon-btn--del {
   background: rgba(248, 81, 73, 0.1);
@@ -551,6 +625,7 @@ input[type="checkbox"] {
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
+  .al-overview  { grid-template-columns: 1fr; }
   .al-stats-bar { gap: 0.6rem; }
   .al-stat-card { min-width: 70px; padding: 0.65rem 0.75rem; }
   .al-stat-num  { font-size: 1.4rem; }

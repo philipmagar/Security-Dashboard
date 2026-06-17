@@ -1,11 +1,27 @@
-import { Routes, Route } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Logs from './pages/Logs';
 import Alerts from './pages/Alerts';
+import Login from './pages/Login';
 import './App.css';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem('siem_token');
+  });
+  const navigate = useNavigate();
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    navigate('/');
+  };
+
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <div className="app-layout">
       <Sidebar />

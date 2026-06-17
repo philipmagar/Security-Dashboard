@@ -9,20 +9,33 @@ import {
   deleteAlert,
 } from '../services/api.service';
 import './Alerts.css';
-
-import { ShieldAlert, AlertCircle, AlertTriangle, Info, Shield, Trash2 } from 'lucide-react';
+import {
+  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
+import {
+  ShieldAlert, AlertCircle, AlertTriangle, Info, Shield, Trash2,
+  CheckCheck, BarChart2
+} from 'lucide-react';
 
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
+const SEV_COLORS = {
+  critical: '#f85149',
+  high:     '#d29922',
+  medium:   '#58a6ff',
+  low:      '#3fb950',
+  info:     '#8b949e',
+};
+
 const SeverityIcon = ({ s }) => {
-  const props = { size: 16, style: { display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' } };
+  const props = { size: 14, style: { display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' } };
   switch(s) {
-    case 'critical': return <ShieldAlert {...props} color="#f85149" />;
-    case 'high': return <AlertTriangle {...props} color="#d29922" />;
-    case 'medium': return <AlertTriangle {...props} color="#58a6ff" />;
-    case 'low': return <AlertCircle {...props} color="#3fb950" />;
-    case 'info': return <Info {...props} color="#1f6feb" />;
-    default: return <AlertCircle {...props} color="#8b949e" />;
+    case 'critical': return <ShieldAlert {...props} color={SEV_COLORS.critical} />;
+    case 'high':     return <AlertTriangle {...props} color={SEV_COLORS.high} />;
+    case 'medium':   return <AlertTriangle {...props} color={SEV_COLORS.medium} />;
+    case 'low':      return <AlertCircle {...props} color={SEV_COLORS.low} />;
+    case 'info':     return <Info {...props} color={SEV_COLORS.info} />;
+    default:         return <AlertCircle {...props} color="#8b949e" />;
   }
 };
 
@@ -36,7 +49,23 @@ const timeAgo = (iso) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
+const formatDate = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 const EMPTY_FORM = { type: '', severity: 'medium', source: '', message: '', details: '' };
+
+// Custom Donut tooltip
+const SevTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="al-chart-tooltip">
+      <span style={{ color: payload[0].payload.fill }}>{payload[0].name}</span>: <strong>{payload[0].value}</strong>
+    </div>
+  );
+};
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);
@@ -101,8 +130,8 @@ export default function Alerts() {
   }, []);
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 30000);
+    (async () => { await load(); })();
+    const interval = setInterval(() => { load(); }, 30000);
     return () => clearInterval(interval);
   }, [load]);
 
@@ -112,20 +141,20 @@ export default function Alerts() {
     setPage(1);
   };
 
-  const handleAck = async (id) => {
+  const handleResolve = async (id) => {
     try {
       await acknowledgeAlert(id);
-      showToast('Alert acknowledged');
+      showToast('Alert resolved');
       load();
-    } catch { showToast('Failed to acknowledge', 'error'); }
+    } catch { showToast('Failed to resolve', 'error'); }
   };
 
-  const handleAckAll = async () => {
+  const handleResolveAll = async () => {
     try {
       const res = await acknowledgeAllAlerts(filters.severity, filters.type);
-      showToast(`${res.acknowledged} alert(s) acknowledged`);
+      showToast(`${res.acknowledged} alert(s) resolved`);
       load();
-    } catch { showToast('Failed to acknowledge all', 'error'); }
+    } catch { showToast('Failed to resolve all', 'error'); }
   };
 
   const handleDelete = async () => {
@@ -174,6 +203,13 @@ export default function Alerts() {
     else setSelected(new Set(alerts.map((a) => a.id)));
   };
 
+  // Build pie chart data from stats
+  const pieData = stats
+    ? SEVERITY_ORDER
+        .map(s => ({ name: s.charAt(0).toUpperCase() + s.slice(1), value: stats.bySeverity?.[s] ?? 0, fill: SEV_COLORS[s] }))
+        .filter(d => d.value > 0)
+    : [];
+
   // ── Render ────────────────────────────────────────────────────────────────
   if (loading && !stats)
     return <div className="al-loading"><span className="al-spinner" />Loading Alerts…</div>;
@@ -199,28 +235,67 @@ export default function Alerts() {
         </button>
       </header>
 
-      {/* Stats bar */}
+      {/* ── Stats bar + Severity Chart ─────────────────────────────────── */}
       {stats && (
-        <section className="al-stats-bar">
-          <div className="al-stat-card al-stat--total">
-            <span className="al-stat-num">{stats.total}</span>
-            <span className="al-stat-label">Total</span>
-          </div>
-          <div className="al-stat-card al-stat--unack">
-            <span className="al-stat-num">{stats.unacknowledged}</span>
-            <span className="al-stat-label">Unacknowledged</span>
-          </div>
-          <div className="al-stat-card al-stat--24h">
-            <span className="al-stat-num">{stats.recent24h}</span>
-            <span className="al-stat-label">Last 24h</span>
-          </div>
-          {SEVERITY_ORDER.map((sev) => (
-            <div key={sev} className={`al-stat-card al-stat--${sev}`}>
-              <span className="al-stat-num">{stats.bySeverity?.[sev] ?? 0}</span>
-              <span className="al-stat-label">{sev.charAt(0).toUpperCase() + sev.slice(1)}</span>
+        <div className="al-overview">
+          {/* Stat cards */}
+          <section className="al-stats-bar">
+            <div className="al-stat-card al-stat--total">
+              <span className="al-stat-num">{stats.total}</span>
+              <span className="al-stat-label">Total</span>
             </div>
-          ))}
-        </section>
+            <div className="al-stat-card al-stat--unack">
+              <span className="al-stat-num">{stats.unacknowledged}</span>
+              <span className="al-stat-label">Open</span>
+            </div>
+            <div className="al-stat-card al-stat--24h">
+              <span className="al-stat-num">{stats.recent24h}</span>
+              <span className="al-stat-label">Last 24h</span>
+            </div>
+            {SEVERITY_ORDER.map((sev) => (
+              <div key={sev} className={`al-stat-card al-stat--${sev}`}>
+                <span className="al-stat-num">{stats.bySeverity?.[sev] ?? 0}</span>
+                <span className="al-stat-label">{sev.charAt(0).toUpperCase() + sev.slice(1)}</span>
+              </div>
+            ))}
+          </section>
+
+          {/* Severity Donut Chart */}
+          <section className="al-chart-section">
+            <div className="al-chart-title-row">
+              <BarChart2 size={16} className="al-chart-icon" />
+              <h3>Severity Breakdown</h3>
+            </div>
+            {pieData.length === 0 ? (
+              <div className="al-chart-empty"><Shield size={32} /><p>No alerts yet</p></div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<SevTooltip />} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value) => <span style={{ color: '#c9d1d9', fontSize: '0.78rem' }}>{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </section>
+        </div>
       )}
 
       {/* Toolbar */}
@@ -240,8 +315,8 @@ export default function Alerts() {
 
           <select name="acknowledged" value={filters.acknowledged} onChange={handleFilterChange} id="filter-ack" className="al-select">
             <option value="">All Status</option>
-            <option value="false">Unacknowledged</option>
-            <option value="true">Acknowledged</option>
+            <option value="false">Open</option>
+            <option value="true">Resolved</option>
           </select>
 
           {(filters.severity || filters.type || filters.acknowledged) && (
@@ -254,8 +329,8 @@ export default function Alerts() {
         <div className="al-toolbar-actions">
           <span className="al-count">{total} alert{total !== 1 ? 's' : ''}</span>
           {unacknowledged > 0 && (
-            <button className="al-btn al-btn--outline" id="ack-all-btn" onClick={handleAckAll}>
-              ✓ Acknowledge All{filters.severity || filters.type ? ' Filtered' : ''}
+            <button className="al-btn al-btn--outline" id="resolve-all-btn" onClick={handleResolveAll}>
+              <CheckCheck size={15} /> Resolve All{filters.severity || filters.type ? ' Filtered' : ''}
             </button>
           )}
         </div>
@@ -283,10 +358,10 @@ export default function Alerts() {
                 <th>Severity</th>
                 <th>Type</th>
                 <th>Message</th>
-                <th>Source</th>
-                <th>Time</th>
+                <th>IP / Source</th>
+                <th>Created At</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -310,14 +385,17 @@ export default function Alerts() {
                   <td>
                     <span className="al-type">{alert.type.replace(/_/g, ' ')}</span>
                   </td>
-                  <td className="al-message">{alert.message}</td>
-                  <td className="al-source">{alert.source}</td>
-                  <td className="al-time" title={new Date(alert.timestamp).toLocaleString()}>
-                    {timeAgo(alert.timestamp)}
+                  <td className="al-message" title={alert.message}>{alert.message}</td>
+                  <td className="al-source">
+                    <span className="al-ip-chip">{alert.source || '—'}</span>
+                  </td>
+                  <td className="al-created-at">
+                    <span className="al-date-main">{formatDate(alert.timestamp || alert.createdAt)}</span>
+                    <span className="al-date-ago">{timeAgo(alert.timestamp || alert.createdAt)}</span>
                   </td>
                   <td>
                     {alert.acknowledged ? (
-                      <span className="al-status al-status--acked">✓ Acked</span>
+                      <span className="al-status al-status--acked">✓ Resolved</span>
                     ) : (
                       <span className="al-status al-status--open">● Open</span>
                     )}
@@ -325,18 +403,20 @@ export default function Alerts() {
                   <td className="al-actions">
                     {!alert.acknowledged && (
                       <button
-                        className="al-icon-btn al-icon-btn--ack"
-                        title="Acknowledge"
-                        onClick={() => handleAck(alert.id)}
-                        id={`ack-${alert.id}`}
-                      >✓</button>
+                        className="al-icon-btn al-icon-btn--resolve"
+                        title="Resolve"
+                        onClick={() => handleResolve(alert.id)}
+                        id={`resolve-${alert.id}`}
+                      >
+                        <CheckCheck size={14} />
+                      </button>
                     )}
                     <button
                       className="al-icon-btn al-icon-btn--del"
                       title="Delete"
                       onClick={() => setDeleteTarget(alert.id)}
                       id={`del-${alert.id}`}
-                    ><Trash2 size={16} /></button>
+                    ><Trash2 size={14} /></button>
                   </td>
                 </tr>
               ))}
@@ -383,7 +463,7 @@ export default function Alerts() {
               </label>
 
               <label className="al-label">
-                Source <span className="al-req">*</span>
+                Source IP / Host <span className="al-req">*</span>
                 <input className="al-input" type="text" value={form.source} onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))} placeholder="e.g. 192.168.1.1" id="form-source" />
               </label>
 

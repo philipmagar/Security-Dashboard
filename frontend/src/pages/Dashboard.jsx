@@ -92,8 +92,7 @@ const Dashboard = () => {
         <section className="card chart-section">
           <h2>Risk Score Analysis</h2>
           {chartData.length > 0 ? (
-            <div className="chart-container" style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
                   <XAxis dataKey="ip" stroke="#a3a3a3" tick={{fill: '#a3a3a3', fontSize: 12}} />
@@ -109,7 +108,6 @@ const Dashboard = () => {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
           ) : (
             <div className="empty-state">No significant risk entities detected.</div>
           )}

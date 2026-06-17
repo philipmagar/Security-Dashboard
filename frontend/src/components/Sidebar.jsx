@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Bell } from 'lucide-react';
+import { LayoutDashboard, FileText, Bell, LogOut } from 'lucide-react';
+import { logoutUser } from '../services/api.service';
 import './Sidebar.css';
 
 const Sidebar = () => {
@@ -22,6 +23,16 @@ const Sidebar = () => {
           Alerts
         </NavLink>
       </nav>
+      <div className="sidebar-footer" style={{ marginTop: 'auto', padding: '1rem' }}>
+        <button 
+          onClick={logoutUser} 
+          className="nav-link" 
+          style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', color: '#f85149' }}
+        >
+          <LogOut size={20} className="icon" color="#f85149" />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 };
