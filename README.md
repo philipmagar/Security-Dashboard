@@ -57,26 +57,42 @@ mini-siem/
 
 ## Getting Started
 
-### 1. Start the Backend Server
+### 1. Start the Database
+The Python engine requires a PostgreSQL database to persist alerts.
+```bash
+cd backend
+docker-compose up -d
+```
+*(If you only want to run the UI and Node backend without Python/DB persistence, you can skip this step).*
 
+### 2. Start the Backend Server
 ```bash
 cd backend
 npm install
 # Ensure a .env file exists with PORT=5001 and JWT_SECRET=your-secret-key
 npm run dev
 ```
-
 The backend API will be available at `http://localhost:5001`.
 
-### 2. Start the Frontend
+### 3. Start the Python Detection Engine
+```bash
+cd security_python
+pip install psycopg2-binary
+python detector.py
+```
 
+### 4. Start the Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
 Vite will serve the app at `http://localhost:5173`.
+
+### Default Credentials
+On the login screen, you can use the **"Login as Demo Admin"** button, or manually enter the seeded credentials:
+- **Email:** `admin@siem.local`
+- **Password:** `Admin@1234`
 
 ---
 
