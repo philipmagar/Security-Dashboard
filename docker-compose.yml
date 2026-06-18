@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: minisiem_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: minisiem
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d minisiem"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: minisiem_backend
+    restart: always
+    ports:
+      - '5000:5000'
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/minisiem
+      - PORT=5000
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/api/health').then(r=>r.ok?process.exit(0):process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: minisiem_frontend
+    restart: always
+    ports:
+      - '5173:5173'
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  detection_engine:
+    build:
+      context: ./security_python
+    container_name: minisiem_detector
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/minisiem
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
