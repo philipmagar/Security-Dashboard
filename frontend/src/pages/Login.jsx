@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Shield, ArrowRight, User } from 'lucide-react';
 import { loginUser } from '../services/api.service';
-import './Login.css';
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -41,23 +40,24 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="login-logo">
-            <Shield size={36} className="logo-icon" />
+    <div className="flex justify-center items-center min-h-screen bg-slate-50 w-full">
+      <div className="bg-white border border-slate-200 rounded-lg p-10 w-full max-w-md shadow-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex justify-center items-center w-16 h-16 bg-blue-50 text-blue-600 rounded-full mb-4">
+            <Shield size={36} />
           </div>
-          <h2>Welcome to Mini-SIEM</h2>
-          <p>Security Information & Event Management</p>
+          <h2 className="m-0 text-2xl font-bold text-slate-900">Welcome to Mini-SIEM</h2>
+          <p className="mt-2 text-sm text-slate-500">Security Information & Event Management</p>
         </div>
 
-        <form className="login-form" onSubmit={handleLogin}>
-          {error && <div className="login-error">{error}</div>}
+        <form className="flex flex-col gap-5" onSubmit={handleLogin}>
+          {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm text-center">{error}</div>}
 
-          <div className="form-group">
-            <label>Email</label>
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-sm text-slate-900">Email</label>
             <input
               type="email"
+              className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="operator@siem.local"
@@ -65,10 +65,11 @@ const Login = ({ onLogin }) => {
             />
           </div>
 
-          <div className="form-group">
-            <label>Password</label>
+          <div className="flex flex-col gap-2">
+            <label className="font-medium text-sm text-slate-900">Password</label>
             <input
               type="password"
+              className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-colors"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -76,18 +77,18 @@ const Login = ({ onLogin }) => {
             />
           </div>
 
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="flex justify-center items-center gap-2 w-full py-3 bg-blue-600 text-white border-none text-base font-medium rounded-md cursor-pointer hover:bg-blue-700 transition-colors" disabled={loading}>
             {loading ? 'Authenticating...' : 'Sign In'}
             {!loading && <ArrowRight size={18} />}
           </button>
         </form>
 
-        <div className="login-divider">
-          <span>OR</span>
+        <div className="flex items-center text-center my-6 before:content-[''] before:flex-1 before:border-b before:border-slate-200 after:content-[''] after:flex-1 after:border-b after:border-slate-200">
+          <span className="px-3 text-slate-500 text-sm font-medium">OR</span>
         </div>
 
         <button 
-          className="btn-demo" 
+          className="flex justify-center items-center gap-2 w-full py-3 bg-white text-slate-900 border border-slate-300 text-base font-medium rounded-md cursor-pointer hover:bg-slate-50 transition-colors" 
           onClick={handleDemoLogin}
           disabled={loading}
         >
