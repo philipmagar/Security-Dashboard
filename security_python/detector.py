@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 from db import fetch_recent_logs, save_alert
-from rules import detect_brute_force
+from rules import detect_brute_force, detect_rapid_registration, detect_password_spraying
 
 def run_detection_engine(poll_interval=10):
     print(f"Starting Python Detection Engine. Polling every {poll_interval} seconds...")
@@ -36,6 +36,14 @@ def run_detection_engine(poll_interval=10):
                 # Rule 1: Brute Force Detection
                 brute_force_alerts = detect_brute_force(new_logs, time_window_minutes=5, max_attempts=5)
                 alerts.extend(brute_force_alerts)
+                
+                # Rule 2: Rapid Registration Spike
+                rapid_reg_alerts = detect_rapid_registration(new_logs, time_window_minutes=10, max_registrations=3)
+                alerts.extend(rapid_reg_alerts)
+                
+                # Rule 3: Password Spraying (Distributed Brute Force)
+                password_spraying_alerts = detect_password_spraying(new_logs, time_window_minutes=30, max_ips=3)
+                alerts.extend(password_spraying_alerts)
                 
                 # Save generated alerts to database
                 for alert in alerts:

@@ -1,4 +1,4 @@
-const { alerts } = require("../models/alert.model");
+const db = require('../utils/db');
 
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
 
@@ -15,117 +15,138 @@ const ALERT_TYPES = [
   "ROLE_ESCALATION_ATTEMPT",
 ];
 
-const createAlert = ({
+const createAlert = async ({
   type,
   severity = "medium",
   source,
   message,
   details = {},
 }) => {
-  const alert = {
-    id: `alert_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    type,
-    severity,
-    source,
-    message,
-    details,
-    acknowledged: false,
-    timestamp: new Date().toISOString(),
-  };
+  const id = `alert_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const timestamp = new Date().toISOString();
 
-  alerts.push(alert);
-
-  if (alerts.length > 1000) {
-    alerts.splice(0, alerts.length - 1000);
-  }
-
-  console.log(
-    `[ALERT] [${severity.toUpperCase()}] ${type} | ${source} | ${message}`,
+  await db.query(
+    'INSERT INTO alerts (id, timestamp, type, severity, source, message, details, acknowledged) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    [id, timestamp, type, severity, source, message, JSON.stringify(details), false]
   );
 
-  return alert;
+  console.log(`[ALERT] [${severity.toUpperCase()}] ${type} | ${source} | ${message}`);
+  
+  return { id, timestamp, type, severity, source, message, details, acknowledged: false };
 };
 
-
-
-const getAlerts = ({
+const getAlerts = async ({
   severity,
   type,
   acknowledged,
   limit = 50,
   page = 1,
 } = {}) => {
-  let filtered = [...alerts];
+  let query = 'SELECT * FROM alerts WHERE 1=1';
+  let countQuery = 'SELECT COUNT(*) FROM alerts WHERE 1=1';
+  const params = [];
+  let paramIndex = 1;
 
   if (severity) {
-    filtered = filtered.filter((a) => a.severity === severity);
+    query += ` AND severity = $${paramIndex}`;
+    countQuery += ` AND severity = $${paramIndex}`;
+    params.push(severity);
+    paramIndex++;
   }
   if (type) {
-    filtered = filtered.filter((a) => a.type === type);
+    query += ` AND type = $${paramIndex}`;
+    countQuery += ` AND type = $${paramIndex}`;
+    params.push(type);
+    paramIndex++;
   }
   if (acknowledged !== undefined) {
     const ack = acknowledged === "true" || acknowledged === true;
-    filtered = filtered.filter((a) => a.acknowledged === ack);
+    query += ` AND acknowledged = $${paramIndex}`;
+    countQuery += ` AND acknowledged = $${paramIndex}`;
+    params.push(ack);
+    paramIndex++;
   }
 
-  // Sort newest first, then by severity descending
-  filtered.sort((a, b) => {
-    const timeDiff = new Date(b.timestamp) - new Date(a.timestamp);
-    if (timeDiff !== 0) return timeDiff;
-    return (SEVERITY_RANK[b.severity] || 0) - (SEVERITY_RANK[a.severity] || 0);
-  });
-
-  const total = filtered.length;
+  // Sort newest first
+  query += ` ORDER BY timestamp DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  
+  const countRes = await db.query(countQuery, params);
+  const total = parseInt(countRes.rows[0].count, 10);
   const totalPages = Math.ceil(total / limit);
   const offset = (page - 1) * limit;
-  const data = filtered.slice(offset, offset + limit);
+
+  params.push(limit, offset);
+  const dataRes = await db.query(query, params);
+
+  const data = dataRes.rows.map(r => ({
+    ...r,
+    details: typeof r.details === 'string' ? JSON.parse(r.details) : r.details
+  }));
 
   return { data, total, page: Number(page), limit: Number(limit), totalPages };
 };
 
-const getAlertById = (id) => alerts.find((a) => a.id === id) || null;
-const acknowledgeAlert = (id) => {
-  const alert = alerts.find((a) => a.id === id);
-  if (!alert) return null;
-  alert.acknowledged = true;
-  alert.acknowledgedAt = new Date().toISOString();
-  return alert;
+const getAlertById = async (id) => {
+  const res = await db.query('SELECT * FROM alerts WHERE id = $1', [id]);
+  if (res.rows.length === 0) return null;
+  const a = res.rows[0];
+  return { ...a, details: typeof a.details === 'string' ? JSON.parse(a.details) : a.details };
 };
 
-const acknowledgeAllAlerts = ({ severity, type } = {}) => {
-  let targets = alerts.filter((a) => !a.acknowledged);
-  if (severity) targets = targets.filter((a) => a.severity === severity);
-  if (type) targets = targets.filter((a) => a.type === type);
-
-  const now = new Date().toISOString();
-  targets.forEach((a) => {
-    a.acknowledged = true;
-    a.acknowledgedAt = now;
-  });
-
-  return { acknowledged: targets.length };
+const acknowledgeAlert = async (id) => {
+  const res = await db.query(
+    'UPDATE alerts SET acknowledged = true WHERE id = $1 RETURNING *',
+    [id]
+  );
+  if (res.rows.length === 0) return null;
+  const a = res.rows[0];
+  return { ...a, details: typeof a.details === 'string' ? JSON.parse(a.details) : a.details };
 };
 
-const deleteAlert = (id) => {
-  const idx = alerts.findIndex((a) => a.id === id);
-  if (idx === -1) return null;
-  const [removed] = alerts.splice(idx, 1);
-  return removed;
+const acknowledgeAllAlerts = async ({ severity, type } = {}) => {
+  let query = 'UPDATE alerts SET acknowledged = true WHERE acknowledged = false';
+  const params = [];
+  let paramIndex = 1;
+
+  if (severity) {
+    query += ` AND severity = $${paramIndex}`;
+    params.push(severity);
+    paramIndex++;
+  }
+  if (type) {
+    query += ` AND type = $${paramIndex}`;
+    params.push(type);
+    paramIndex++;
+  }
+
+  const res = await db.query(query, params);
+  return { acknowledged: res.rowCount };
 };
 
-const getAlertStats = () => {
-  const total = alerts.length;
-  const unacknowledged = alerts.filter((a) => !a.acknowledged).length;
+const deleteAlert = async (id) => {
+  const res = await db.query('DELETE FROM alerts WHERE id = $1 RETURNING *', [id]);
+  if (res.rows.length === 0) return null;
+  const a = res.rows[0];
+  return { ...a, details: typeof a.details === 'string' ? JSON.parse(a.details) : a.details };
+};
+
+const getAlertStats = async () => {
+  const totalRes = await db.query('SELECT COUNT(*) FROM alerts');
+  const unackRes = await db.query('SELECT COUNT(*) FROM alerts WHERE acknowledged = false');
+  const last24hRes = await db.query("SELECT COUNT(*) FROM alerts WHERE timestamp > NOW() - INTERVAL '24 hours'");
+  
+  const sevRes = await db.query('SELECT severity, COUNT(*) FROM alerts GROUP BY severity');
+  const typeRes = await db.query('SELECT type, COUNT(*) FROM alerts GROUP BY type');
+
+  const total = parseInt(totalRes.rows[0].count, 10);
+  const unacknowledged = parseInt(unackRes.rows[0].count, 10);
+  const recent24h = parseInt(last24hRes.rows[0].count, 10);
+
   const bySeverity = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
-  const byType = {};
-  const last24h = Date.now() - 24 * 60 * 60 * 1000;
-  let recent24h = 0;
+  sevRes.rows.forEach(r => { bySeverity[r.severity] = parseInt(r.count, 10); });
 
-  alerts.forEach((a) => {
-    if (bySeverity[a.severity] !== undefined) bySeverity[a.severity]++;
-    byType[a.type] = (byType[a.type] || 0) + 1;
-    if (new Date(a.timestamp).getTime() > last24h) recent24h++;
-  });
+  const byType = {};
+  typeRes.rows.forEach(r => { byType[r.type] = parseInt(r.count, 10); });
 
   return {
     total,

@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { logSecurityEvent } = require('../utils/logger');
-const { users } = require('../models/user.model');
+const { getUserByEmail, createUser } = require('../models/user.model');
 const { recordFailedAttempt, clearFailedAttempts } = require('../middleware/bruteForce.middleware');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key';
@@ -37,7 +37,8 @@ const register = async (req, res) => {
         });
     }
 
-    if (users.find(u => u.email === email)) {
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
         logSecurityEvent('REGISTER', email, false, 'User already exists', ip);
         return res.status(409).json({ message: 'User already exists' });
     }
@@ -50,9 +51,8 @@ const register = async (req, res) => {
             password: hashedPassword,
             name: name || '',
             role,
-            createdAt: new Date().toISOString(),
         };
-        users.push(newUser);
+        await createUser(newUser);
         logSecurityEvent('REGISTER', email, true, 'User registered successfully', ip);
 
         const { password: _, ...userWithoutPassword } = newUser;
@@ -72,7 +72,7 @@ const login = async (req, res) => {
         return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = users.find(u => u.email === email);
+    const user = await getUserByEmail(email);
     if (!user) {
        
         recordFailedAttempt(req);

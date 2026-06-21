@@ -1,147 +1,150 @@
-const { alerts } = require('../models/alert.model');
 const { createAlert } = require('../services/alert.service');
-
-const securityLogs = [];
+const db = require('./db');
 
 /**
- * Logs a security event and auto-generates an alert for suspicious patterns.
- * @param {string} event      - Event name (LOGIN, REGISTER, BRUTE_FORCE_DETECTED, etc.)
- * @param {string} userEmail  - Target user email or identifier
- * @param {boolean} success   - Whether the event was successful
- * @param {string} details    - Human-readable detail string
- * @param {string} [ip]       - Source IP address (optional)
+ * Logs a security event to PostgreSQL and auto-generates an alert for suspicious patterns.
  */
-const logSecurityEvent = (event, userEmail, success, details, ip = 'unknown') => {
-    const timestamp = new Date().toISOString();
-    const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const logEntry = { id, timestamp, event, userEmail, success, details, ip };
-    securityLogs.push(logEntry);
+const logSecurityEvent = async (event, userEmail, success, details, ip = 'unknown') => {
+    try {
+        await db.query(
+            'INSERT INTO logs (event, user_email, success, ip, details) VALUES ($1, $2, $3, $4, $5)',
+            [event, userEmail, success, ip, details]
+        );
 
-    // Prevent memory leaks by limiting the array size
-    if (securityLogs.length > 10000) {
-        securityLogs.splice(0, securityLogs.length - 10000);
-    }
+        console.log(
+            `[SECURITY LOG] Event: ${event} | User: ${userEmail} | ` +
+            `Success: ${success} | IP: ${ip} | Details: ${details}`
+        );
 
-    console.log(
-        `[SECURITY LOG] ${timestamp} | Event: ${event} | User: ${userEmail} | ` +
-        `Success: ${success} | IP: ${ip} | Details: ${details}`
-    );
-
-    // ── Auto-alert rules ────────────────────────────────────────────────────
-
-    // Multiple failed logins: trigger alert after 3+ failures from same email
-    if (event === 'LOGIN' && !success) {
-        const recentWindow = Date.now() - 10 * 60 * 1000; // last 10 minutes
-        const recentFailures = securityLogs.filter(
-            l => l.event === 'LOGIN' &&
-                 !l.success &&
-                 l.userEmail === userEmail &&
-                 new Date(l.timestamp).getTime() > recentWindow
-        ).length;
-
-        if (recentFailures === 3) {
-            createAlert({
-                type: 'MULTIPLE_FAILED_LOGINS',
-                severity: 'high',
-                source: ip,
-                message: `3 consecutive failed login attempts for ${userEmail}`,
-                details: { userEmail, recentFailures, ip },
-            });
-        }
-    }
-
-    // Unauthorized access attempt (403 equivalent events)
-    if (event === 'UNAUTHORIZED_ACCESS') {
-        const recentWindow = Date.now() - 5 * 60 * 1000; // last 5 minutes
-        const recentAccessDenied = securityLogs.filter(
-            l => l.event === 'UNAUTHORIZED_ACCESS' &&
-                 l.ip === ip &&
-                 new Date(l.timestamp).getTime() > recentWindow
-        ).length;
-
-        if (recentAccessDenied === 5) {
-            createAlert({
-                type: 'ACCESS_DENIED_SPIKE',
-                severity: 'high',
-                source: ip,
-                message: `Spike in unauthorized access attempts from IP ${ip}`,
-                details: { ip, recentAccessDenied },
-            });
+        // ── Auto-alert rules ────────────────────────────────────────────────────
+        
+        // Multiple failed logins: trigger alert after 3+ failures from same email
+        if (event === 'LOGIN' && !success) {
+            const res = await db.query(
+                `SELECT COUNT(*) FROM logs 
+                 WHERE event = 'LOGIN' AND success = false 
+                 AND user_email = $1 
+                 AND timestamp > NOW() - INTERVAL '10 minutes'`,
+                [userEmail]
+            );
+            const recentFailures = parseInt(res.rows[0].count, 10);
+            
+            if (recentFailures === 3) {
+                createAlert({
+                    type: 'MULTIPLE_FAILED_LOGINS',
+                    severity: 'high',
+                    source: ip,
+                    message: `3 consecutive failed login attempts for ${userEmail}`,
+                    details: { userEmail, recentFailures, ip },
+                });
+            }
         }
 
-        createAlert({
-            type: 'UNAUTHORIZED_ACCESS',
-            severity: 'medium',
-            source: ip,
-            message: `Unauthorized access attempt by ${userEmail}`,
-            details: { userEmail, details, ip },
-        });
-    }
+        // Unauthorized access attempt (403 equivalent events)
+        if (event === 'UNAUTHORIZED_ACCESS') {
+            const res = await db.query(
+                `SELECT COUNT(*) FROM logs 
+                 WHERE event = 'UNAUTHORIZED_ACCESS' 
+                 AND ip = $1 
+                 AND timestamp > NOW() - INTERVAL '5 minutes'`,
+                [ip]
+            );
+            const recentAccessDenied = parseInt(res.rows[0].count, 10);
 
-    // Token-related failures
-    if (event === 'TOKEN_INVALID') {
-        const recentWindow = Date.now() - 5 * 60 * 1000; // last 5 minutes
-        const recentInvalidTokens = securityLogs.filter(
-            l => l.event === 'TOKEN_INVALID' &&
-                 l.ip === ip &&
-                 new Date(l.timestamp).getTime() > recentWindow
-        ).length;
+            if (recentAccessDenied === 5) {
+                createAlert({
+                    type: 'ACCESS_DENIED_SPIKE',
+                    severity: 'high',
+                    source: ip,
+                    message: `Spike in unauthorized access attempts from IP ${ip}`,
+                    details: { ip, recentAccessDenied },
+                });
+            }
 
-        if (recentInvalidTokens === 5) {
             createAlert({
-                type: 'INVALID_TOKEN_SPIKE',
-                severity: 'high',
+                type: 'UNAUTHORIZED_ACCESS',
+                severity: 'medium',
                 source: ip,
-                message: `Spike in invalid token attempts from IP ${ip}`,
-                details: { ip, recentInvalidTokens },
+                message: `Unauthorized access attempt by ${userEmail}`,
+                details: { userEmail, details, ip },
             });
         }
 
-        createAlert({
-            type: 'TOKEN_INVALID',
-            severity: 'low',
-            source: ip,
-            message: `Invalid or expired token used by ${userEmail}`,
-            details: { userEmail, ip },
-        });
-    }
+        // Token-related failures
+        if (event === 'TOKEN_INVALID') {
+            const res = await db.query(
+                `SELECT COUNT(*) FROM logs 
+                 WHERE event = 'TOKEN_INVALID' 
+                 AND ip = $1 
+                 AND timestamp > NOW() - INTERVAL '5 minutes'`,
+                [ip]
+            );
+            const recentInvalidTokens = parseInt(res.rows[0].count, 10);
 
-    // Role escalation attempt
-    if (event === 'ROLE_ESCALATION_ATTEMPT') {
-        createAlert({
-            type: 'ROLE_ESCALATION_ATTEMPT',
-            severity: 'critical',
-            source: ip,
-            message: `Role escalation attempt detected for ${userEmail}`,
-            details: { userEmail, details, ip },
-        });
+            if (recentInvalidTokens === 5) {
+                createAlert({
+                    type: 'INVALID_TOKEN_SPIKE',
+                    severity: 'high',
+                    source: ip,
+                    message: `Spike in invalid token attempts from IP ${ip}`,
+                    details: { ip, recentInvalidTokens },
+                });
+            }
+
+            createAlert({
+                type: 'TOKEN_INVALID',
+                severity: 'low',
+                source: ip,
+                message: `Invalid or expired token used by ${userEmail}`,
+                details: { userEmail, ip },
+            });
+        }
+
+        // Role escalation attempt
+        if (event === 'ROLE_ESCALATION_ATTEMPT') {
+            createAlert({
+                type: 'ROLE_ESCALATION_ATTEMPT',
+                severity: 'critical',
+                source: ip,
+                message: `Role escalation attempt detected for ${userEmail}`,
+                details: { userEmail, details, ip },
+            });
+        }
+    } catch (err) {
+        console.error('Error logging security event:', err);
     }
 };
 
 /**
- * Returns aggregate metrics from the security log.
+ * Returns aggregate metrics from the PostgreSQL security log.
  */
-const getSecurityMetrics = () => {
-    const totalEvents = securityLogs.length;
-    const failedLogins = securityLogs.filter(l => l.event === 'LOGIN' && !l.success).length;
-    const successfulLogins = securityLogs.filter(l => l.event === 'LOGIN' && l.success).length;
-    const registrations = securityLogs.filter(l => l.event === 'REGISTER').length;
-    const unauthorizedAttempts = securityLogs.filter(l => l.event === 'UNAUTHORIZED_ACCESS').length;
+const getSecurityMetrics = async () => {
+    try {
+        const totalEventsRes = await db.query('SELECT COUNT(*) FROM logs');
+        const failedLoginsRes = await db.query("SELECT COUNT(*) FROM logs WHERE event = 'LOGIN' AND success = false");
+        const successfulLoginsRes = await db.query("SELECT COUNT(*) FROM logs WHERE event = 'LOGIN' AND success = true");
+        const registrationsRes = await db.query("SELECT COUNT(*) FROM logs WHERE event = 'REGISTER'");
+        const unauthorizedRes = await db.query("SELECT COUNT(*) FROM logs WHERE event = 'UNAUTHORIZED_ACCESS'");
+        const last24hRes = await db.query("SELECT COUNT(*) FROM logs WHERE timestamp > NOW() - INTERVAL '24 hours'");
+        
+        const recentLogsRes = await db.query('SELECT * FROM logs ORDER BY timestamp DESC LIMIT 10');
 
-    const last24h = Date.now() - 24 * 60 * 60 * 1000;
-    const eventsLast24h = securityLogs.filter(
-        l => new Date(l.timestamp).getTime() > last24h
-    ).length;
-
-    return {
-        totalEvents,
-        failedLogins,
-        successfulLogins,
-        registrations,
-        unauthorizedAttempts,
-        eventsLast24h,
-        recentLogs: securityLogs.slice(-10).reverse(), // Last 10 events, newest first
-    };
+        return {
+            totalEvents: parseInt(totalEventsRes.rows[0].count, 10),
+            failedLogins: parseInt(failedLoginsRes.rows[0].count, 10),
+            successfulLogins: parseInt(successfulLoginsRes.rows[0].count, 10),
+            registrations: parseInt(registrationsRes.rows[0].count, 10),
+            unauthorizedAttempts: parseInt(unauthorizedRes.rows[0].count, 10),
+            eventsLast24h: parseInt(last24hRes.rows[0].count, 10),
+            recentLogs: recentLogsRes.rows,
+        };
+    } catch (err) {
+        console.error('Error getting security metrics:', err);
+        return {
+            totalEvents: 0, failedLogins: 0, successfulLogins: 0, 
+            registrations: 0, unauthorizedAttempts: 0, eventsLast24h: 0, recentLogs: []
+        };
+    }
 };
 
-module.exports = { logSecurityEvent, getSecurityMetrics, securityLogs };
+module.exports = { logSecurityEvent, getSecurityMetrics };

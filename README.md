@@ -17,77 +17,133 @@ mini-siem/
 
 ## Features
 
-### Backend Security Engine
+### Comprehensive Security Capabilities
 - **API Rate Limiting:** Tiered limiters using `express-rate-limit` for global endpoints, logins, and alerts.
-- **Brute Force Defense:** Two-layer protection on authentication endpoints with automatic account lockouts.
+- **Brute Force Defense:** Two-layer protection on authentication endpoints with automatic account lockouts and IP banning.
 - **Role-Based Access Control (RBAC):** `user`, `operator`, and `admin` roles with progressive access levels enforced on every route.
-- **Alert Engine:** Auto-generated alerts for brute force, rate limit violations, unauthorized access, invalid tokens, and role escalation attempts.
+- **Authentication & Authorization:** Secure JWT-based authentication with encrypted password storage.
 - **Risk Scoring & Threat Levels:** Computed risk scores per IP based on behavioral history (`LOW` → `CRITICAL`).
-- **Security Logs:** Filterable, paginated audit trail of all system events.
 
-### Python Detection Engine
-- **PostgreSQL Integration:** Connects to the `minisiem` database using `psycopg2`.
-- **Brute Force Detection:** Polling engine that analyzes authentication logs to dynamically detect sustained attacks.
-- **Automated Alerting:** Automatically persists high-severity alerts back into the central database.
+### Automated Detection & Alerting
+- **Alert Engine (Node.js):** Auto-generated alerts for brute force, rate limit violations, unauthorized access, invalid tokens, and role escalation attempts.
+- **Polling Detection Engine (Python):** Background worker that analyzes authentication logs to dynamically detect sustained attacks and generates persistent alerts.
+- **Automated Triage:** Built-in severity calculation and automated database persistence for high-priority threats.
 
-### Frontend Operations Dashboard
-
-#### Dashboard
-- Real-time metrics: total events, login success rate, active brute force threats, unacknowledged alerts.
-- **Risk Score Analysis:** Dynamic bar charts using Recharts to visualize high-risk entities.
-- High-risk entity table with IP addresses, risk levels, and computed scores.
-- Recent alerts timeline panel with severity colour-coding.
-- Auto-refreshes every 30 seconds.
-
-#### Logs Explorer
-- Searchable and filterable view of all security events.
-- Responsive data table with pagination.
-
-#### Alert Management 
-- **Stats Bar:** Live counts for Total, Unacknowledged, Last-24h, and per-severity (Critical / High / Medium / Low / Info) alerts.
-- **Filter & Search:** Filter alerts by severity, type, and acknowledgement status simultaneously.
-- **Paginated Table:** Colour-coded severity rows with type, message, source IP, relative timestamp, and open/acknowledged status.
-- **Acknowledge:** One-click triage per alert, or bulk-acknowledge all matching the active filters.
-- **Delete:** Permanently remove an alert with a confirmation modal (admin only).
-- **Create Manual Alert:** Form modal to fire a manual alert with type, severity, source, message, and optional JSON details.
-- **Toast Notifications:** Real-time feedback for every action (acknowledge, delete, create).
-- **Auto-refresh:** Syncs every 30 seconds in the background.
+### Operations Dashboard (Frontend)
+- **Real-Time Analytics:** Live dashboard with metrics for total events, login success rate, active brute force threats, and unacknowledged alerts.
+- **Risk Visualization:** Dynamic bar charts using Recharts to visualize high-risk entities and recent alerts timeline panel.
+- **Logs Explorer:** Searchable, filterable, and paginated view of all system security events.
+- **Alert Management System:** 
+  - Live statistics for Total, Unacknowledged, Last-24h, and per-severity alerts.
+  - One-click and bulk acknowledge capabilities.
+  - Create manual alerts, permanently delete alerts (admin only).
+- **Premium Aesthetics:** Modern dark-mode UI built with Tailwind CSS v4, featuring glassmorphism and responsive design.
+- **Toast Notifications:** Real-time feedback for every action.
 
 ---
 
-## Getting Started
+## System Architecture
 
-### 1. Start the Database
-The Python engine requires a PostgreSQL database to persist alerts.
-```bash
-cd backend
-docker-compose up -d
-```
-*(If you only want to run the UI and Node backend without Python/DB persistence, you can skip this step).*
+The Mini-SIEM platform employs a modern microservices-oriented architecture fully containerized with Docker:
 
-### 2. Start the Backend Server
-```bash
-cd backend
-npm install
-# Ensure a .env file exists with PORT=5001 and JWT_SECRET=your-secret-key
-npm run dev
-```
-The backend API will be available at `http://localhost:5001`.
+```mermaid
+graph TD
+    Client[Web Browser - React/Tailwind]
+    Node[Node.js API - Express]
+    DB[(PostgreSQL Database)]
+    Python[Python Detection Engine]
 
-### 3. Start the Python Detection Engine
-```bash
-cd security_python
-pip install psycopg2-binary
-python detector.py
+    Client -->|REST API Requests| Node
+    Node -->|Read/Write Logs & Alerts| DB
+    Python -->|Poll Authentication Logs| DB
+    Python -->|Write Threat Alerts| DB
 ```
 
-### 4. Start the Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Vite will serve the app at `http://localhost:5173`.
+- **Frontend (React + Vite + Tailwind CSS v4):** Serves the interactive user interface.
+- **Backend API (Node.js + Express):** Handles routing, JWT authentication, RBAC, rate limiting, and directly interacts with the database for CRUD operations.
+- **Database (PostgreSQL):** Central repository for users, security logs, alerts, and system state.
+- **Detection Engine (Python):** Background worker that continuously polls the database for suspicious activities and generates high-severity alerts.
+
+---
+
+## Threat Model
+
+Mini-SIEM is designed to detect and mitigate several common security threats:
+
+1. **Brute Force Attacks:** 
+   - *Threat:* Attackers attempting to guess user credentials through repeated login attempts.
+   - *Mitigation:* The Python Detection Engine monitors failed login attempts and flags IP addresses exceeding thresholds. The Node.js backend automatically locks accounts and rate-limits offending IPs.
+
+2. **Denial of Service (DoS) via API Abuse:**
+   - *Threat:* Malicious actors overwhelming the server with excessive API requests.
+   - *Mitigation:* Tiered rate-limiting implemented via `express-rate-limit` on global, login, and alert endpoints.
+
+3. **Privilege Escalation:**
+   - *Threat:* Standard users attempting to access administrative or operator-level functions.
+   - *Mitigation:* Strict Role-Based Access Control (RBAC) enforced on every backend route, validating JWT claims.
+
+4. **Unauthorized Access & Token Theft:**
+   - *Threat:* Accessing protected resources without valid credentials.
+   - *Mitigation:* JWT-based authentication with expiration, requiring valid headers for all protected API calls. Invalid token attempts trigger security alerts.
+
+---
+
+## Deployment & Getting Started
+
+Mini-SIEM is fully containerized using Docker, allowing for a seamless deployment process.
+
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your host machine.
+
+### Production Deployment (Recommended)
+
+The entire application stack (Frontend, Backend, Database, Python Engine) can be launched with a single command.
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/mini-siem.git
+   cd mini-siem
+   ```
+
+2. **Run with Docker Compose:**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. **Access the Application:**
+   - **Frontend UI:** `http://localhost:5173`
+   - **Backend API:** `http://localhost:5000`
+
+### Local Development Setup
+
+If you prefer to run the services locally for development:
+
+1. **Start the Database:**
+   ```bash
+   docker-compose up -d db
+   ```
+
+2. **Start the Backend Server:**
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```
+   *(Ensure a `.env` file exists with `PORT=5000` and `JWT_SECRET=your-secret-key`)*
+
+3. **Start the Python Detection Engine:**
+   ```bash
+   cd security_python
+   pip install -r requirements.txt
+   python detector.py
+   ```
+
+4. **Start the Frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
 ### Default Credentials
 On the login screen, you can use the **"Login as Demo Admin"** button, or manually enter the seeded credentials:
@@ -131,9 +187,9 @@ On the login screen, you can use the **"Login as Demo Admin"** button, or manual
 |-------|-----------|
 | Backend | Node.js, Express 5, express-rate-limit, jsonwebtoken, bcrypt |
 | Detection Engine | Python, psycopg2 |
-| Frontend | React 19, Vite, React Router v7, Recharts, Lucide React |
+| Frontend | React 19, Vite, React Router v7, Recharts, Lucide React, Tailwind CSS v4 |
 | Database | PostgreSQL 15 (Docker) |
-| Styling | Vanilla CSS (minimal dark theme, glassmorphism) |
+| Styling | Tailwind CSS v4, minimal dark theme, glassmorphism |
 
 ---
 

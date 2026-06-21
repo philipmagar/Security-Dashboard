@@ -2,6 +2,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 import json
+import uuid
+import time
 
 # Connection string matching the one in docker-compose.yml / .env
 DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/minisiem")
@@ -35,13 +37,14 @@ def setup_tables():
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS alerts (
-                    id SERIAL PRIMARY KEY,
+                    id VARCHAR(100) PRIMARY KEY,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     type VARCHAR(50),
                     severity VARCHAR(20),
                     source VARCHAR(50),
                     message TEXT,
-                    details TEXT
+                    details TEXT,
+                    acknowledged BOOLEAN DEFAULT FALSE
                 );
             """)
             conn.commit()
@@ -72,11 +75,12 @@ def save_alert(alert_type, severity, source, message, details):
     if not conn: return False
     
     try:
+        alert_id = f"alert_py_{int(time.time()*1000)}_{uuid.uuid4().hex[:5]}"
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO alerts (type, severity, source, message, details)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (alert_type, severity, source, message, json.dumps(details)))
+                INSERT INTO alerts (id, type, severity, source, message, details, acknowledged)
+                VALUES (%s, %s, %s, %s, %s, %s, False)
+            """, (alert_id, alert_type, severity, source, message, json.dumps(details)))
             conn.commit()
             return True
     except Exception as e:
