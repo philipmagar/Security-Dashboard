@@ -1,7 +1,11 @@
-﻿frontend/.env
+frontend/.env
+
+# Python artifacts
 __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Security test output reports
 security-tests/*_results.json
 security-tests/*_report.json
