@@ -67,6 +67,10 @@ class BruteForceRule(BaseRule):
                     source=ip,
                     message=f"Brute force attack detected from IP {ip}. {len(matched_entries)} failed login attempts within {self.time_window_minutes} minutes.",
                     evidence=evidence,
+                    event_count=len(matched_entries),
+                    time_window_minutes=self.time_window_minutes,
+                    target_accounts=ip_users[ip],
+                    target_endpoints=[event.endpoint],
                 )
                 alerts.append(alert)
                 # Clear to prevent duplicate consecutive triggers in the same burst
@@ -131,6 +135,9 @@ class ApiAbuseRule(BaseRule):
                     source=ip,
                     message=f"API abuse / rate limit flooding detected from IP {ip}. {len(matched_entries)} violations within {self.time_window_minutes} minutes.",
                     evidence=evidence,
+                    event_count=len(matched_entries),
+                    time_window_minutes=self.time_window_minutes,
+                    target_endpoints=ip_endpoints[ip],
                 )
                 alerts.append(alert)
                 ip_violations[ip] = []
@@ -191,6 +198,9 @@ class InvalidTokenRule(BaseRule):
                     source=ip,
                     message=f"Invalid authentication token spike detected from IP {ip}. {len(matched_entries)} invalid token attempts within {self.time_window_minutes} minutes.",
                     evidence=evidence,
+                    event_count=len(matched_entries),
+                    time_window_minutes=self.time_window_minutes,
+                    target_endpoints=ip_endpoints[ip],
                 )
                 alerts.append(alert)
                 ip_attempts[ip] = []
@@ -234,8 +244,12 @@ class PrivilegeEscalationRule(BaseRule):
                         source=event.source_ip if event.source_ip != "unknown" else event.username,
                         message=f"Critical role escalation attempt detected for account '{event.username}' from IP {event.source_ip}.",
                         evidence=evidence,
+                        event_count=1,
+                        time_window_minutes=1.0,
+                        target_accounts=[event.username],
+                        target_endpoints=[event.endpoint],
                         severity="CRITICAL",
-                        risk_score=95,
+                        additional_risk_boost=20,
                     )
                 )
                 continue
@@ -254,13 +268,15 @@ class PrivilegeEscalationRule(BaseRule):
 
                 if len(ip_denials[ip]) >= self.max_denials:
                     matched_entries = list(ip_denials[ip])
+                    target_endpoints = list({e[1].endpoint for e in matched_entries})
+                    target_accounts = list({e[1].username for e in matched_entries if e[1].username != "unknown"})
                     evidence = {
                         "ip": ip,
                         "unauthorized_access_count": len(matched_entries),
                         "threshold": self.max_denials,
                         "time_window_minutes": self.time_window_minutes,
-                        "targeted_endpoints": list({e[1].endpoint for e in matched_entries}),
-                        "targeted_accounts": list({e[1].username for e in matched_entries if e[1].username != "unknown"}),
+                        "targeted_endpoints": target_endpoints,
+                        "targeted_accounts": target_accounts,
                     }
 
                     alerts.append(
@@ -268,8 +284,11 @@ class PrivilegeEscalationRule(BaseRule):
                             source=ip,
                             message=f"Privilege violation / access denied spike detected from IP {ip}. {len(matched_entries)} unauthorized requests within {self.time_window_minutes} minutes.",
                             evidence=evidence,
+                            event_count=len(matched_entries),
+                            time_window_minutes=self.time_window_minutes,
+                            target_accounts=target_accounts,
+                            target_endpoints=target_endpoints,
                             severity="HIGH",
-                            risk_score=85,
                         )
                     )
                     ip_denials[ip] = []
@@ -331,6 +350,10 @@ class PasswordSprayingRule(BaseRule):
                     source="MULTIPLE_IPS",
                     message=f"Distributed password spraying detected targeting account '{username}'. {len(unique_ips)} different IPs attempted access within {self.time_window_minutes} minutes.",
                     evidence=evidence,
+                    event_count=len(unique_ips),
+                    time_window_minutes=self.time_window_minutes,
+                    target_accounts=[username],
+                    severity="CRITICAL",
                 )
                 alerts.append(alert)
                 account_attempts[username].clear()
@@ -388,6 +411,10 @@ class RapidRegistrationRule(BaseRule):
                     source=ip,
                     message=f"Rapid account registrations detected from IP {ip}. {len(ip_registrations[ip])} accounts created within {self.time_window_minutes} minutes.",
                     evidence=evidence,
+                    event_count=len(ip_registrations[ip]),
+                    time_window_minutes=self.time_window_minutes,
+                    target_accounts=ip_usernames[ip],
+                    severity="MEDIUM",
                 )
                 alerts.append(alert)
                 ip_registrations[ip] = []
