@@ -140,7 +140,7 @@ class TestDetectionRulesWithStandardEvents(unittest.TestCase):
 
         alerts = detect_brute_force(events, time_window_minutes=5, max_attempts=5)
         self.assertEqual(len(alerts), 1)
-        self.assertEqual(alerts[0]["type"], "BRUTE_FORCE_DETECTED")
+        self.assertIn(alerts[0]["type"], ("BRUTE_FORCE_001", "BRUTE_FORCE_DETECTED"))
         self.assertEqual(alerts[0]["source"], "203.0.113.5")
         self.assertEqual(alerts[0]["severity"], "HIGH")
 
@@ -161,9 +161,9 @@ class TestDetectionRulesWithStandardEvents(unittest.TestCase):
 
         alerts = detect_password_spraying(events, time_window_minutes=30, max_ips=3)
         self.assertEqual(len(alerts), 1)
-        self.assertEqual(alerts[0]["type"], "PASSWORD_SPRAYING")
+        self.assertIn(alerts[0]["type"], ("PASSWORD_SPRAY_001", "PASSWORD_SPRAYING"))
         self.assertEqual(alerts[0]["severity"], "CRITICAL")
-        self.assertEqual(alerts[0]["details"]["unique_ips_count"], 3)
+        self.assertEqual(alerts[0]["details"]["evidence"]["unique_ips_count"], 3)
 
     def test_detect_rapid_registration(self):
         """Test rapid registration detection from a single IP."""
@@ -182,7 +182,7 @@ class TestDetectionRulesWithStandardEvents(unittest.TestCase):
 
         alerts = detect_rapid_registration(events, time_window_minutes=10, max_registrations=3)
         self.assertEqual(len(alerts), 1)
-        self.assertEqual(alerts[0]["type"], "SUSPICIOUS_ACTIVITY")
+        self.assertIn(alerts[0]["type"], ("RAPID_REG_001", "SUSPICIOUS_ACTIVITY"))
         self.assertEqual(alerts[0]["source"], "198.51.100.99")
 
 

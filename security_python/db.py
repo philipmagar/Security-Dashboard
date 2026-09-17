@@ -48,8 +48,12 @@ def setup_tables():
                     source VARCHAR(50),
                     message TEXT,
                     details TEXT,
+                    rule_id VARCHAR(50),
+                    risk_score INT,
                     acknowledged BOOLEAN DEFAULT FALSE
                 );
+                ALTER TABLE alerts ADD COLUMN IF NOT EXISTS rule_id VARCHAR(50);
+                ALTER TABLE alerts ADD COLUMN IF NOT EXISTS risk_score INT;
             """)
             conn.commit()
             print("Database tables ensured.")
@@ -73,18 +77,43 @@ def fetch_recent_logs(limit=100):
     finally:
         conn.close()
 
-def save_alert(alert_type, severity, source, message, details):
+def save_alert(alert_type, severity=None, source=None, message=None, details=None, rule_id=None, risk_score=None):
     """Save a generated alert into the database."""
     conn = get_connection()
     if not conn: return False
     
     try:
+        # Support passing a DetectionAlert object or dict as first parameter
+        if hasattr(alert_type, 'rule_id'): # DetectionAlert instance
+            rule_id = alert_type.rule_id
+            risk_score = alert_type.risk_score
+            severity = alert_type.severity
+            source = alert_type.source
+            message = alert_type.message
+            details = alert_type.details
+            alert_type_val = alert_type.rule_id
+        elif isinstance(alert_type, dict) and 'rule_id' in alert_type:
+            rule_id = alert_type.get('rule_id')
+            risk_score = alert_type.get('risk_score')
+            severity = alert_type.get('severity', 'MEDIUM')
+            source = alert_type.get('source', 'unknown')
+            message = alert_type.get('message', '')
+            details = alert_type.get('details', alert_type.get('evidence', {}))
+            alert_type_val = alert_type.get('type', rule_id)
+        else:
+            alert_type_val = alert_type
+            if rule_id is None and isinstance(details, dict):
+                rule_id = details.get('rule_id')
+                risk_score = details.get('risk_score')
+
+        serialized_details = json.dumps(details) if isinstance(details, (dict, list)) else str(details or "")
+
         alert_id = f"alert_py_{int(time.time()*1000)}_{uuid.uuid4().hex[:5]}"
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO alerts (id, type, severity, source, message, details, acknowledged)
-                VALUES (%s, %s, %s, %s, %s, %s, False)
-            """, (alert_id, alert_type, severity, source, message, json.dumps(details)))
+                INSERT INTO alerts (id, type, severity, source, message, details, rule_id, risk_score, acknowledged)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, False)
+            """, (alert_id, alert_type_val, severity, source, message, serialized_details, rule_id, risk_score))
             conn.commit()
             return True
     except Exception as e:
