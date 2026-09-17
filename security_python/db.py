@@ -32,8 +32,12 @@ def setup_tables():
                     user_email VARCHAR(100),
                     success BOOLEAN,
                     ip VARCHAR(50),
+                    endpoint VARCHAR(255),
+                    result VARCHAR(50),
                     details TEXT
                 );
+                ALTER TABLE logs ADD COLUMN IF NOT EXISTS endpoint VARCHAR(255);
+                ALTER TABLE logs ADD COLUMN IF NOT EXISTS result VARCHAR(50);
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS alerts (
