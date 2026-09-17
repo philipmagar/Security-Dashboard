@@ -2,19 +2,69 @@ const { createAlert } = require('../services/alert.service');
 const db = require('./db');
 
 /**
- * Logs a security event to PostgreSQL and auto-generates an alert for suspicious patterns.
+ * Standard Security Event Logger
+ * Formats, normalizes, and logs security events consistently to PostgreSQL.
+ * Supports both standard structured object format and legacy positional parameters.
  */
-const logSecurityEvent = async (event, userEmail, success, details, ip = 'unknown') => {
+const logSecurityEvent = async (eventOrObj, userEmail, success, details, ip = 'unknown', endpoint = 'internal', result = null) => {
     try {
+        let normEventType, normUsername, normSuccess, normIp, normEndpoint, normResult, normDetails, normTimestamp;
+
+        if (eventOrObj && typeof eventOrObj === 'object' && !Array.isArray(eventOrObj)) {
+            // Structured Object Format
+            normEventType = (eventOrObj.eventType || eventOrObj.event || 'UNKNOWN').toUpperCase().trim();
+            normUsername  = (eventOrObj.username || eventOrObj.userEmail || eventOrObj.user || 'unknown').toLowerCase().trim();
+            normIp        = eventOrObj.sourceIp || eventOrObj.ip || 'unknown';
+            normEndpoint  = eventOrObj.endpoint || eventOrObj.path || 'internal';
+            
+            if (eventOrObj.result !== undefined) {
+                normResult = String(eventOrObj.result).toUpperCase().trim();
+                normSuccess = (normResult === 'SUCCESS');
+            } else if (eventOrObj.success !== undefined) {
+                normSuccess = Boolean(eventOrObj.success);
+                normResult = normSuccess ? 'SUCCESS' : 'FAILURE';
+            } else {
+                normSuccess = false;
+                normResult = 'UNKNOWN';
+            }
+
+            normDetails   = eventOrObj.details !== undefined ? eventOrObj.details : '';
+            normTimestamp = eventOrObj.timestamp ? new Date(eventOrObj.timestamp) : new Date();
+        } else {
+            // Positional Parameters Format (Backward Compatibility)
+            normEventType = (eventOrObj || 'UNKNOWN').toUpperCase().trim();
+            normUsername  = (userEmail || 'unknown').toLowerCase().trim();
+            normSuccess   = Boolean(success);
+            normIp        = ip || 'unknown';
+            normEndpoint  = endpoint || 'internal';
+            normResult    = result || (normSuccess ? 'SUCCESS' : 'FAILURE');
+            normDetails   = details !== undefined ? details : '';
+            normTimestamp = new Date();
+        }
+
+        // Clean IP if it's wrapped in IPv6 prefix
+        if (typeof normIp === 'string') {
+            normIp = normIp.replace(/^::ffff:/, '').trim();
+        }
+
+        const serializedDetails = typeof normDetails === 'object' ? JSON.stringify(normDetails) : String(normDetails);
+
         await db.query(
-            'INSERT INTO logs (event, user_email, success, ip, details) VALUES ($1, $2, $3, $4, $5)',
-            [event, userEmail, success, ip, details]
+            `INSERT INTO logs (event, user_email, success, ip, endpoint, result, details, timestamp)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [normEventType, normUsername, normSuccess, normIp, normEndpoint, normResult, serializedDetails, normTimestamp]
         );
 
         console.log(
-            `[SECURITY LOG] Event: ${event} | User: ${userEmail} | ` +
-            `Success: ${success} | IP: ${ip} | Details: ${details}`
+            `[SECURITY EVENT] Type: ${normEventType} | User: ${normUsername} | ` +
+            `IP: ${normIp} | Endpoint: ${normEndpoint} | Result: ${normResult} | Details: ${serializedDetails}`
         );
+
+        const event = normEventType;
+        const userEmail = normUsername;
+        const success = normSuccess;
+        const details = serializedDetails;
+        ip = normIp;
 
         // ── Auto-alert rules ────────────────────────────────────────────────────
         

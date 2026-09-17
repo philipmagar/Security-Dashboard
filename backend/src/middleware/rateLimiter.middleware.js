@@ -1,10 +1,20 @@
 const rateLimit = require('express-rate-limit');
 const { createAlert } = require('../services/alert.service');
+const { logSecurityEvent } = require('../utils/logger');
 
 
 const rateLimitHandler = (req, res, _next, options) => {
     const ip = req.ip || req.connection.remoteAddress;
-    const path = req.originalUrl;
+    const path = req.originalUrl || req.url || 'unknown';
+
+    logSecurityEvent({
+        eventType: 'RATE_LIMIT_EXCEEDED',
+        username: req.body?.email || req.user?.email || 'unknown',
+        sourceIp: ip,
+        endpoint: path,
+        result: 'BLOCKED',
+        details: `Rate limit of ${options.max} requests exceeded on ${path}`,
+    });
 
     createAlert({
         type: 'RATE_LIMIT_EXCEEDED',

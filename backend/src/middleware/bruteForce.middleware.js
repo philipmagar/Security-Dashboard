@@ -40,8 +40,14 @@ const bruteForceCheck = (req, res, next) => {
         if (now < record.lockedUntil) {
             const remaining = Math.ceil((record.lockedUntil - now) / 1000);
 
-            logSecurityEvent('BRUTE_FORCE_BLOCKED', email, false,
-                `Account blocked — ${record.attempts} failed attempts from IP ${ip}`);
+            logSecurityEvent({
+                eventType: 'BRUTE_FORCE_BLOCKED',
+                username: email,
+                sourceIp: ip,
+                endpoint: req.originalUrl || req.url || '/api/auth/login',
+                result: 'BLOCKED',
+                details: `Account blocked — ${record.attempts} failed attempts from IP ${ip}`,
+            });
 
             return res.status(423).json({
                 status: 'error',
@@ -79,8 +85,14 @@ const recordFailedAttempt = (req) => {
         record.lockedUntil = now + LOCK_DURATION_MS;
         bruteForceStore.set(key, record);
 
-        logSecurityEvent('BRUTE_FORCE_DETECTED', email, false,
-            `Brute force detected: ${record.attempts} failed attempts from IP ${ip}. Account locked for 30 minutes.`);
+        logSecurityEvent({
+            eventType: 'BRUTE_FORCE_DETECTED',
+            username: email,
+            sourceIp: ip,
+            endpoint: req.originalUrl || req.url || '/api/auth/login',
+            result: 'BLOCKED',
+            details: `Brute force detected: ${record.attempts} failed attempts from IP ${ip}. Account locked for 30 minutes.`,
+        });
 
         createAlert({
             type: 'BRUTE_FORCE_DETECTED',

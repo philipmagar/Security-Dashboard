@@ -96,8 +96,18 @@ const getLogs = async (req, res) => {
             totalPages,
             returned: logsRes.rows.length,
             logs: logsRes.rows.map(r => ({
-                id: r.id, timestamp: r.timestamp, event: r.event,
-                userEmail: r.user_email, success: r.success, ip: r.ip, details: r.details
+                id: r.id,
+                timestamp: r.timestamp,
+                event: r.event,
+                eventType: r.event,
+                userEmail: r.user_email,
+                username: r.user_email,
+                success: r.success,
+                ip: r.ip,
+                sourceIp: r.ip,
+                endpoint: r.endpoint || 'internal',
+                result: r.result || (r.success ? 'SUCCESS' : 'FAILURE'),
+                details: r.details
             })),
         });
     } catch (err) {
@@ -115,8 +125,18 @@ const getLogById = async (req, res) => {
         }
         const r = result.rows[0];
         res.status(200).json({
-            id: r.id, timestamp: r.timestamp, event: r.event,
-            userEmail: r.user_email, success: r.success, ip: r.ip, details: r.details
+            id: r.id,
+            timestamp: r.timestamp,
+            event: r.event,
+            eventType: r.event,
+            userEmail: r.user_email,
+            username: r.user_email,
+            success: r.success,
+            ip: r.ip,
+            sourceIp: r.ip,
+            endpoint: r.endpoint || 'internal',
+            result: r.result || (r.success ? 'SUCCESS' : 'FAILURE'),
+            details: r.details
         });
     } catch (err) {
         res.status(500).json({ message: 'Internal server error' });

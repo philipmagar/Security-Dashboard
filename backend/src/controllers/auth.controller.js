@@ -42,7 +42,14 @@ const register = async (req, res) => {
 
     const existingUser = await getUserByEmail(email);
     if (existingUser) {
-        logSecurityEvent('REGISTER', email, false, 'User already exists', ip);
+        logSecurityEvent({
+            eventType: 'REGISTER',
+            username: email,
+            sourceIp: ip,
+            endpoint: '/api/auth/register',
+            result: 'FAILURE',
+            details: 'User already exists',
+        });
         return res.status(409).json({ message: 'User already exists' });
     }
 
@@ -56,12 +63,26 @@ const register = async (req, res) => {
             role,
         };
         await createUser(newUser);
-        logSecurityEvent('REGISTER', email, true, 'User registered successfully', ip);
+        logSecurityEvent({
+            eventType: 'REGISTER',
+            username: email,
+            sourceIp: ip,
+            endpoint: '/api/auth/register',
+            result: 'SUCCESS',
+            details: 'User registered successfully',
+        });
 
         const { password: _, ...userWithoutPassword } = newUser;
         res.status(201).json(userWithoutPassword);
     } catch (error) {
-        logSecurityEvent('REGISTER', email, false, error.message, ip);
+        logSecurityEvent({
+            eventType: 'REGISTER',
+            username: email,
+            sourceIp: ip,
+            endpoint: '/api/auth/register',
+            result: 'ERROR',
+            details: error.message,
+        });
         res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -80,9 +101,15 @@ const login = async (req, res) => {
 
     const user = await getUserByEmail(email);
     if (!user) {
-       
         recordFailedAttempt(req);
-        logSecurityEvent('LOGIN', email, false, 'Invalid credentials - User not found', ip);
+        logSecurityEvent({
+            eventType: 'LOGIN',
+            username: email,
+            sourceIp: ip,
+            endpoint: '/api/auth/login',
+            result: 'FAILURE',
+            details: 'Invalid credentials - User not found',
+        });
         return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -90,15 +117,17 @@ const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             const attempts = recordFailedAttempt(req);
-            logSecurityEvent(
-                'LOGIN', email, false,
-                `Invalid credentials - Password mismatch (attempt #${attempts})`,
-                ip
-            );
+            logSecurityEvent({
+                eventType: 'LOGIN',
+                username: email,
+                sourceIp: ip,
+                endpoint: '/api/auth/login',
+                result: 'FAILURE',
+                details: `Invalid credentials - Password mismatch (attempt #${attempts})`,
+            });
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-      
         clearFailedAttempts(req); 
 
         const token = jwt.sign(
@@ -107,7 +136,14 @@ const login = async (req, res) => {
             { expiresIn: '1h' }
         );
 
-        logSecurityEvent('LOGIN', email, true, 'User logged in successfully', ip);
+        logSecurityEvent({
+            eventType: 'LOGIN',
+            username: email,
+            sourceIp: ip,
+            endpoint: '/api/auth/login',
+            result: 'SUCCESS',
+            details: 'User logged in successfully',
+        });
         res.status(200).json({
             token,
             user: {
@@ -118,7 +154,14 @@ const login = async (req, res) => {
             },
         });
     } catch (error) {
-        logSecurityEvent('LOGIN', email, false, error.message, ip);
+        logSecurityEvent({
+            eventType: 'LOGIN',
+            username: email,
+            sourceIp: ip,
+            endpoint: '/api/auth/login',
+            result: 'ERROR',
+            details: error.message,
+        });
         res.status(500).json({ message: 'Internal server error' });
     }
 };

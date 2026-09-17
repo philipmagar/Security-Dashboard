@@ -17,7 +17,14 @@ const authenticateUser = (req, res, next) => {
         req.user = decoded;
         next();
     } catch (error) {
-        logSecurityEvent('TOKEN_INVALID', 'unknown', false, 'Invalid or expired token', req.ip || req.connection?.remoteAddress);
+        logSecurityEvent({
+            eventType: 'TOKEN_INVALID',
+            username: 'unknown',
+            sourceIp: req.ip || req.connection?.remoteAddress,
+            endpoint: req.originalUrl || req.url || '/api',
+            result: 'DENIED',
+            details: 'Invalid or expired token',
+        });
         return res.status(401).json({ message: 'Authentication failed. Invalid or expired token.' });
     }
 };
@@ -29,7 +36,14 @@ const authorizeRoles = (...allowedRoles) => {
         }
 
         if (!allowedRoles.includes(req.user.role)) {
-            logSecurityEvent('UNAUTHORIZED_ACCESS', req.user.email, false, `Role not authorized. Required: ${allowedRoles.join(', ')}`, req.ip || req.connection?.remoteAddress);
+            logSecurityEvent({
+                eventType: 'UNAUTHORIZED_ACCESS',
+                username: req.user.email,
+                sourceIp: req.ip || req.connection?.remoteAddress,
+                endpoint: req.originalUrl || req.url || '/api',
+                result: 'DENIED',
+                details: `Role not authorized. Required: ${allowedRoles.join(', ')}`,
+            });
             return res.status(403).json({ 
                 message: `Access denied. Requires one of the following roles: ${allowedRoles.join(', ')}` 
             });
