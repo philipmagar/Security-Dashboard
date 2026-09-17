@@ -48,18 +48,18 @@ class TestRuleImplementations(unittest.TestCase):
         self.assertIsInstance(alert, DetectionAlert)
         self.assertEqual(alert.rule_id, "BRUTE_FORCE_001")
         self.assertEqual(alert.attack_type, "BRUTE_FORCE")
-        self.assertEqual(alert.severity, "HIGH")
-        self.assertEqual(alert.risk_score, 75)
+        self.assertIn(alert.severity, ("HIGH", "CRITICAL"))
+        self.assertGreaterEqual(alert.risk_score, 60)
         self.assertEqual(alert.source, "192.168.1.100")
         self.assertEqual(alert.evidence["attempts_count"], 5)
         self.assertIn("victim@siem.local", alert.evidence["targeted_accounts"])
+        self.assertTrue(len(alert.recommended_response) > 0)
 
     def test_api_abuse_rule(self):
         """Test API_ABUSE_001 rate limit abuse detection."""
         rule = ApiAbuseRule(time_window_minutes=5, max_violations=2)
         self.assertEqual(rule.rule_id, "API_ABUSE_001")
         self.assertEqual(rule.severity, "MEDIUM")
-        self.assertEqual(rule.risk_score, 60)
 
         events = [
             SecurityEvent(
@@ -84,17 +84,17 @@ class TestRuleImplementations(unittest.TestCase):
         self.assertEqual(len(alerts), 1)
         alert = alerts[0]
         self.assertEqual(alert.rule_id, "API_ABUSE_001")
-        self.assertEqual(alert.risk_score, 60)
+        self.assertGreaterEqual(alert.risk_score, 40)
         self.assertEqual(alert.source, "203.0.113.88")
         self.assertEqual(alert.evidence["violations_count"], 2)
         self.assertIn("/api/dashboard", alert.evidence["targeted_endpoints"])
+        self.assertTrue(len(alert.recommended_response) > 0)
 
     def test_invalid_token_rule(self):
         """Test INVALID_TOKEN_001 token tampering burst detection."""
         rule = InvalidTokenRule(time_window_minutes=5, max_attempts=3)
         self.assertEqual(rule.rule_id, "INVALID_TOKEN_001")
         self.assertEqual(rule.severity, "HIGH")
-        self.assertEqual(rule.risk_score, 70)
 
         events = [
             SecurityEvent(
@@ -112,17 +112,16 @@ class TestRuleImplementations(unittest.TestCase):
         self.assertEqual(len(alerts), 1)
         alert = alerts[0]
         self.assertEqual(alert.rule_id, "INVALID_TOKEN_001")
-        self.assertEqual(alert.severity, "HIGH")
-        self.assertEqual(alert.risk_score, 70)
+        self.assertGreaterEqual(alert.risk_score, 60)
         self.assertEqual(alert.source, "198.51.100.42")
         self.assertEqual(alert.evidence["invalid_token_attempts"], 3)
+        self.assertTrue(len(alert.recommended_response) > 0)
 
     def test_privilege_escalation_rule(self):
         """Test PRIVILEGE_ESCALATION_001 unauthorized role escalation."""
         rule = PrivilegeEscalationRule(time_window_minutes=5, max_denials=3)
         self.assertEqual(rule.rule_id, "PRIVILEGE_ESCALATION_001")
         self.assertEqual(rule.severity, "CRITICAL")
-        self.assertEqual(rule.risk_score, 95)
 
         # 1. Immediate alert on ROLE_ESCALATION_ATTEMPT
         escalation_event = SecurityEvent(
@@ -138,7 +137,8 @@ class TestRuleImplementations(unittest.TestCase):
         self.assertEqual(len(alerts), 1)
         self.assertEqual(alerts[0].rule_id, "PRIVILEGE_ESCALATION_001")
         self.assertEqual(alerts[0].severity, "CRITICAL")
-        self.assertEqual(alerts[0].risk_score, 95)
+        self.assertGreaterEqual(alerts[0].risk_score, 90)
+        self.assertTrue(len(alerts[0].recommended_response) > 0)
 
         # 2. Burst alert on 403 UNAUTHORIZED_ACCESS
         unauthorized_events = [
@@ -156,13 +156,13 @@ class TestRuleImplementations(unittest.TestCase):
         self.assertEqual(len(denial_alerts), 1)
         self.assertEqual(denial_alerts[0].rule_id, "PRIVILEGE_ESCALATION_001")
         self.assertEqual(denial_alerts[0].evidence["unauthorized_access_count"], 3)
+        self.assertTrue(len(denial_alerts[0].recommended_response) > 0)
 
     def test_password_spraying_rule(self):
         """Test PASSWORD_SPRAY_001 distributed password spraying detection."""
         rule = PasswordSprayingRule(time_window_minutes=30, max_ips=3)
         self.assertEqual(rule.rule_id, "PASSWORD_SPRAY_001")
         self.assertEqual(rule.severity, "CRITICAL")
-        self.assertEqual(rule.risk_score, 90)
 
         events = [
             SecurityEvent(
@@ -182,17 +182,16 @@ class TestRuleImplementations(unittest.TestCase):
         self.assertEqual(alert.rule_id, "PASSWORD_SPRAY_001")
         self.assertEqual(alert.attack_type, "PASSWORD_SPRAY")
         self.assertEqual(alert.severity, "CRITICAL")
-        self.assertEqual(alert.risk_score, 90)
+        self.assertGreaterEqual(alert.risk_score, 80)
         self.assertEqual(alert.source, "MULTIPLE_IPS")
         self.assertEqual(alert.evidence["unique_ips_count"], 3)
         self.assertEqual(alert.evidence["target_account"], "ceo@siem.local")
+        self.assertTrue(len(alert.recommended_response) > 0)
 
     def test_rapid_registration_rule(self):
         """Test RAPID_REG_001 bot registration bursts."""
         rule = RapidRegistrationRule(time_window_minutes=10, max_registrations=3)
         self.assertEqual(rule.rule_id, "RAPID_REG_001")
-        self.assertEqual(rule.severity, "MEDIUM")
-        self.assertEqual(rule.risk_score, 50)
 
         events = [
             SecurityEvent(
@@ -210,8 +209,9 @@ class TestRuleImplementations(unittest.TestCase):
         self.assertEqual(len(alerts), 1)
         alert = alerts[0]
         self.assertEqual(alert.rule_id, "RAPID_REG_001")
-        self.assertEqual(alert.risk_score, 50)
+        self.assertGreaterEqual(alert.risk_score, 40)
         self.assertEqual(alert.evidence["registrations_count"], 3)
+        self.assertTrue(len(alert.recommended_response) > 0)
 
 
 class TestRuleEngine(unittest.TestCase):

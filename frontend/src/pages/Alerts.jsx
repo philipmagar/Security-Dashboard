@@ -4,7 +4,10 @@ import {
   acknowledgeAlert, acknowledgeAllAlerts, deleteAlert,
 } from '../services/api.service';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ShieldAlert, AlertCircle, AlertTriangle, Info, Shield, Trash2, CheckCheck, BarChart2 } from 'lucide-react';
+import {
+  ShieldAlert, AlertCircle, AlertTriangle, Info, Shield, Trash2, CheckCheck,
+  BarChart2, ChevronDown, ChevronUp, Zap, ShieldCheck, Activity
+} from 'lucide-react';
 
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
 
@@ -17,11 +20,19 @@ const SEV_COLORS = {
 };
 
 const SEV_BADGE = {
-  critical: 'bg-red-100 text-red-800',
-  high:     'bg-amber-100 text-amber-800',
-  medium:   'bg-blue-100 text-blue-800',
-  low:      'bg-green-100 text-green-800',
-  info:     'bg-slate-100 text-slate-600',
+  critical: 'bg-red-100 text-red-800 border border-red-200',
+  high:     'bg-amber-100 text-amber-800 border border-amber-200',
+  medium:   'bg-blue-100 text-blue-800 border border-blue-200',
+  low:      'bg-green-100 text-green-800 border border-green-200',
+  info:     'bg-slate-100 text-slate-600 border border-slate-200',
+};
+
+const getRiskBadge = (score) => {
+  const num = Number(score) || 0;
+  if (num >= 90) return { label: `${num}/100`, class: 'bg-red-600 text-white font-bold shadow-sm' };
+  if (num >= 70) return { label: `${num}/100`, class: 'bg-orange-500 text-white font-bold shadow-sm' };
+  if (num >= 40) return { label: `${num}/100`, class: 'bg-blue-600 text-white font-medium' };
+  return { label: `${num}/100`, class: 'bg-emerald-600 text-white font-medium' };
 };
 
 const SEV_ROW_BG = {
@@ -91,6 +102,7 @@ export default function Alerts() {
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selected, setSelected] = useState(new Set());
+  const [expandedId, setExpandedId] = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -312,65 +324,155 @@ export default function Alerts() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="py-3 px-4 border-b-2 border-slate-100">
+                  <th className="py-3 px-3 border-b-2 border-slate-100 w-8"></th>
+                  <th className="py-3 px-3 border-b-2 border-slate-100">
                     <input type="checkbox" checked={selected.size === alerts.length && alerts.length > 0} onChange={selectAll} />
                   </th>
-                  {['Severity', 'Type', 'Message', 'IP / Source', 'Created At', 'Status', 'Action'].map(h => (
+                  {['Severity', 'Risk Score', 'Rule / Attack', 'Message', 'IP / Source', 'Created At', 'Status', 'Action'].map(h => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-100">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {alerts.map(alert => (
-                  <tr
-                    key={alert.id}
-                    className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${SEV_ROW_BG[alert.severity] || ''} ${alert.acknowledged ? 'opacity-60' : ''} ${selected.has(alert.id) ? 'bg-blue-50/50' : ''}`}
-                  >
-                    <td className="py-3 px-4">
-                      <input type="checkbox" checked={selected.has(alert.id)} onChange={() => toggleSelect(alert.id)} />
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${SEV_BADGE[alert.severity] || 'bg-slate-100 text-slate-600'}`}>
-                        <SeverityIcon s={alert.severity} /> {alert.severity}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-700">{alert.type.replace(/_/g, ' ')}</td>
-                    <td className="py-3 px-4 text-slate-700 max-w-xs truncate" title={alert.message}>{alert.message}</td>
-                    <td className="py-3 px-4">
-                      <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">{alert.source || '—'}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="block text-slate-700">{formatDate(alert.timestamp || alert.createdAt)}</span>
-                      <span className="text-xs text-slate-400">{timeAgo(alert.timestamp || alert.createdAt)}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {alert.acknowledged
-                        ? <span className="text-green-600 text-xs font-semibold">✓ Resolved</span>
-                        : <span className="text-amber-600 text-xs font-semibold">● Open</span>
-                      }
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {!alert.acknowledged && (
-                          <button
-                            className="p-1.5 rounded text-green-600 hover:bg-green-50 transition-colors"
-                            title="Resolve"
-                            onClick={() => handleResolve(alert.id)}
-                          >
-                            <CheckCheck size={14} />
-                          </button>
-                        )}
-                        <button
-                          className="p-1.5 rounded text-red-500 hover:bg-red-50 transition-colors"
-                          title="Delete"
-                          onClick={() => setDeleteTarget(alert.id)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {alerts.map(alert => {
+                  const isExpanded = expandedId === alert.id;
+                  const riskInfo = getRiskBadge(alert.risk_score || alert.riskScore);
+                  const evidence = alert.evidence || alert.details?.evidence || (typeof alert.details === 'object' ? alert.details : {});
+                  const responseText = alert.recommended_response || alert.recommendedResponse || alert.details?.recommended_response || alert.details?.response || '';
+                  const ruleCode = alert.rule_id || alert.ruleId || alert.details?.rule_id || alert.type;
+                  const attackType = alert.attack_type || alert.attackType || alert.details?.attack_type || alert.type;
+
+                  return (
+                    <>
+                      <tr
+                        key={alert.id}
+                        onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+                        className={`border-b border-slate-50 hover:bg-slate-50/80 transition-colors cursor-pointer ${SEV_ROW_BG[alert.severity] || ''} ${alert.acknowledged ? 'opacity-60' : ''} ${selected.has(alert.id) ? 'bg-blue-50/50' : ''}`}
+                      >
+                        <td className="py-3 px-2 text-center text-slate-400">
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </td>
+                        <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
+                          <input type="checkbox" checked={selected.has(alert.id)} onChange={() => toggleSelect(alert.id)} />
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${SEV_BADGE[alert.severity] || 'bg-slate-100 text-slate-600'}`}>
+                            <SeverityIcon s={alert.severity} /> {alert.severity}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs ${riskInfo.class}`}>
+                            <Zap size={11} /> {riskInfo.label}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-800 text-xs">{ruleCode}</span>
+                            <span className="text-slate-500 text-xs">{attackType?.replace(/_/g, ' ')}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700 max-w-xs truncate" title={alert.message}>
+                          {alert.message}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">{alert.source || '—'}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="block text-slate-700">{formatDate(alert.timestamp || alert.createdAt)}</span>
+                          <span className="text-xs text-slate-400">{timeAgo(alert.timestamp || alert.createdAt)}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {alert.acknowledged
+                            ? <span className="text-green-600 text-xs font-semibold">✓ Resolved</span>
+                            : <span className="text-amber-600 text-xs font-semibold">● Open</span>
+                          }
+                        </td>
+                        <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            {!alert.acknowledged && (
+                              <button
+                                className="p-1.5 rounded text-green-600 hover:bg-green-50 transition-colors"
+                                title="Resolve"
+                                onClick={() => handleResolve(alert.id)}
+                              >
+                                <CheckCheck size={14} />
+                              </button>
+                            )}
+                            <button
+                              className="p-1.5 rounded text-red-500 hover:bg-red-50 transition-colors"
+                              title="Delete"
+                              onClick={() => setDeleteTarget(alert.id)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expandable Actionable Response & Evidence Row */}
+                      {isExpanded && (
+                        <tr className="bg-slate-50/70 border-b border-slate-200">
+                          <td colSpan={10} className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Recommended Response Playbook */}
+                              <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3.5 text-slate-800">
+                                <div className="flex items-center gap-2 mb-2 text-blue-900 font-semibold text-sm">
+                                  <ShieldCheck className="text-blue-600" size={16} />
+                                  <span>Recommended Response & Mitigation Playbook</span>
+                                </div>
+                                <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed pl-1">
+                                  {responseText || "Review security logs and investigate source IP activity."}
+                                </div>
+                              </div>
+
+                              {/* Attack Context & Evidence Breakdown */}
+                              <div className="bg-white border border-slate-200 rounded-lg p-3.5 text-slate-800">
+                                <div className="flex items-center gap-2 mb-2 text-slate-800 font-semibold text-sm">
+                                  <Activity className="text-amber-600" size={16} />
+                                  <span>Attack Context & Evidence Breakdown</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="text-slate-400 block">Rule ID:</span>
+                                    <span className="font-mono font-semibold text-slate-700">{ruleCode}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block">Risk Score:</span>
+                                    <span className="font-bold text-slate-800">{alert.risk_score || alert.riskScore || '—'}/100</span>
+                                  </div>
+                                  {evidence?.attempts_count !== undefined && (
+                                    <div>
+                                      <span className="text-slate-400 block">Attempts / Violations:</span>
+                                      <span className="font-semibold text-slate-700">{evidence.attempts_count || evidence.violations_count || evidence.unauthorized_access_count}</span>
+                                    </div>
+                                  )}
+                                  {evidence?.time_window_minutes !== undefined && (
+                                    <div>
+                                      <span className="text-slate-400 block">Time Window:</span>
+                                      <span className="text-slate-700">{evidence.time_window_minutes} minutes</span>
+                                    </div>
+                                  )}
+                                  {evidence?.targeted_accounts?.length > 0 && (
+                                    <div className="col-span-2">
+                                      <span className="text-slate-400 block">Target Accounts:</span>
+                                      <span className="font-mono text-slate-700">{evidence.targeted_accounts.join(', ')}</span>
+                                    </div>
+                                  )}
+                                  {evidence?.targeted_endpoints?.length > 0 && (
+                                    <div className="col-span-2">
+                                      <span className="text-slate-400 block">Target Endpoints:</span>
+                                      <span className="font-mono text-slate-700">{evidence.targeted_endpoints.join(', ')}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
