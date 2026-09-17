@@ -53,8 +53,16 @@ const setupDb = async () => {
           source VARCHAR(50),
           message TEXT,
           details TEXT,
+          rule_id VARCHAR(50),
+          attack_type VARCHAR(50),
+          risk_score INT,
+          recommended_response TEXT,
           acknowledged BOOLEAN DEFAULT FALSE
       );
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS rule_id VARCHAR(50);
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS attack_type VARCHAR(50);
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS risk_score INT;
+      ALTER TABLE alerts ADD COLUMN IF NOT EXISTS recommended_response TEXT;
     `);
     console.log('Database tables ensured in Node.js.');
   } catch (error) {
