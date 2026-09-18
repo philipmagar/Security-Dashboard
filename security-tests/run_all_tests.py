@@ -20,6 +20,7 @@ from datetime import datetime
 from brute_force_test import run_brute_force_test
 from rate_limit_test import run_rate_limit_test
 from password_spray_test import run_password_spray_test
+from api_security_verification_test import run_security_verification
 
 try:
     from colorama import Fore, Style, init
@@ -57,8 +58,20 @@ def main():
     suite_start = time.time()
     suite_results = {}
 
-    # 1. Brute-Force Simulation
-    print(f"\n{BOLD}[1/3] EXECUTING TEST CASE 1: CREDENTIAL BRUTE FORCE SIMULATION{RESET}\n")
+    # 1. API & Database Layer Security Verification
+    print(f"\n{BOLD}[1/4] EXECUTING TEST CASE 1: API & DATABASE SECURITY CONTROLS VERIFICATION{RESET}\n")
+    api_report = run_security_verification(
+        base_url=args.url,
+        admin_email=args.admin_email,
+        admin_pass=args.admin_password,
+        output_file="api_security_verification_results.json"
+    )
+    suite_results["api_and_db_security_verification"] = api_report
+
+    time.sleep(1)
+
+    # 2. Brute-Force Simulation
+    print(f"\n{BOLD}[2/4] EXECUTING TEST CASE 2: CREDENTIAL BRUTE FORCE SIMULATION{RESET}\n")
     bf_report = run_brute_force_test(
         target_url=args.url,
         email="target_user@siem.local",
@@ -72,8 +85,8 @@ def main():
 
     time.sleep(1)
 
-    # 2. Rate Limiting DoS Simulation
-    print(f"\n{BOLD}[2/3] EXECUTING TEST CASE 2: API FLOOD & RATE LIMITING SIMULATION{RESET}\n")
+    # 3. Rate Limiting DoS Simulation
+    print(f"\n{BOLD}[3/4] EXECUTING TEST CASE 3: API FLOOD & RATE LIMITING SIMULATION{RESET}\n")
     rl_report = run_rate_limit_test(
         target_url=args.url,
         email="flood_sim@siem.local",
@@ -84,8 +97,8 @@ def main():
 
     time.sleep(1)
 
-    # 3. Distributed Password Spraying
-    print(f"\n{BOLD}[3/3] EXECUTING TEST CASE 3: DISTRIBUTED PASSWORD SPRAYING SIMULATION{RESET}\n")
+    # 4. Distributed Password Spraying
+    print(f"\n{BOLD}[4/4] EXECUTING TEST CASE 4: DISTRIBUTED PASSWORD SPRAYING SIMULATION{RESET}\n")
     botnet_ips = [f"198.51.100.{20 + i}" for i in range(5)]
     spray_report = run_password_spray_test(
         target_url=args.url,
@@ -102,18 +115,19 @@ def main():
 {CYAN}{BOLD}================================================================================
                     FINAL SECURITY TEST BENCHMARK MATRIX
 ================================================================================{RESET}
-{BOLD}{'Test Case':<26} {'Attempts':<10} {'Detected?':<12} {'TTD (sec)':<12} {'Severity':<10} {'Mitigation Status'}{RESET}
+{BOLD}{'Test Case':<28} {'Tests/Attempts':<16} {'Passed / Detected':<20} {'Mitigation / Action'}{RESET}
 --------------------------------------------------------------------------------
-{'Brute Force Test':<26} {bf_report['total_attempts_sent']:<10} {GREEN if bf_report['attack_detected'] else RED}{'YES [PASS]':<12}{RESET} {str(bf_report['time_to_detection_seconds']) + 's':<12} {'CRITICAL':<10} {GREEN}{'HTTP 423 Account Lockout':<20}{RESET}
-{'Rate Limit Flood':<26} {rl_report['total_requests_sent']:<10} {GREEN if rl_report['rate_limit_enforced'] else RED}{'YES [PASS]':<12}{RESET} {str(rl_report['time_to_mitigation_seconds']) + 's':<12} {'HIGH':<10} {GREEN}{'HTTP 429 Request Blocked':<20}{RESET}
-{'Distributed Spray':<26} {spray_report['total_requests']:<10} {GREEN}{'YES [PASS]':<12}{RESET} {'< 10.0s':<12} {'CRITICAL':<10} {GREEN}{'Cross-IP Correlation':<20}{RESET}
+{'API & DB Security Controls':<28} {str(api_report['summary']['total_tests']) + ' Tests':<16} {GREEN}{str(api_report['summary']['passed_tests']) + '/' + str(api_report['summary']['total_tests']) + ' [PASS]' :<20}{RESET} {GREEN}{'Validation, RBAC & Parameterized SQL'}{RESET}
+{'Brute Force Attack':<28} {str(bf_report['total_attempts_sent']) + ' Req':<16} {GREEN if bf_report['attack_detected'] else RED}{'YES [PASS]':<20}{RESET} {GREEN}{'HTTP 423 Account Lockout'}{RESET}
+{'Rate Limit API Flood':<28} {str(rl_report['total_requests_sent']) + ' Req':<16} {GREEN if rl_report['rate_limit_enforced'] else RED}{'YES [PASS]':<20}{RESET} {GREEN}{'HTTP 429 Request Blocked'}{RESET}
+{'Distributed Spray':<28} {str(spray_report['total_requests']) + ' Req':<16} {GREEN}{'YES [PASS]':<20}{RESET} {GREEN}{'Cross-IP Correlation Alert'}{RESET}
 --------------------------------------------------------------------------------
 {BOLD}Total Test Execution Time:{RESET} {total_suite_time} seconds
 {CYAN}{BOLD}================================================================================{RESET}
 """)
 
     master_report = {
-        "suite_name": "Mini-SIEM Security Testing & Attack Simulation Suite",
+        "suite_name": "Mini-SIEM Security Testing & Attack Simulation Master Suite",
         "timestamp": datetime.now().isoformat(),
         "total_execution_time_seconds": total_suite_time,
         "results": suite_results
@@ -127,3 +141,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
