@@ -26,6 +26,16 @@ const getUserByEmail = async (email) => {
   return res.rows[0];
 };
 
+const getUserById = async (id) => {
+  const res = await db.query('SELECT id, email, name, role, created_at FROM users WHERE id = $1', [id]);
+  return res.rows[0];
+};
+
+const getAllUsers = async () => {
+  const res = await db.query('SELECT id, email, name, role, created_at FROM users ORDER BY created_at DESC');
+  return res.rows;
+};
+
 const createUser = async (user) => {
   const { id, email, password, name, role } = user;
   await db.query(
@@ -35,4 +45,5 @@ const createUser = async (user) => {
   return user;
 };
 
-module.exports = { getUserByEmail, createUser };
+module.exports = { getUserByEmail, getUserById, getAllUsers, createUser };
+

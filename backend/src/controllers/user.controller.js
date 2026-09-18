@@ -1,12 +1,17 @@
-const { users } = require('../models/user.model');
+const { getUserById } = require('../models/user.model');
 
-const getProfile = (req, res) => {
-    const user = users.find(u => u.id === req.user.id);
-    if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+const getProfile = async (req, res) => {
+    try {
+        const user = await getUserById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (err) {
+        console.error('Error fetching user profile:', err);
+        res.status(500).json({ message: 'Internal server error' });
     }
-    const { password, ...userWithoutPassword } = user;
-    res.status(200).json(userWithoutPassword);
 };
 
 module.exports = { getProfile };
+
